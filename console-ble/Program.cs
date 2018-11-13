@@ -12,11 +12,14 @@ namespace console_ble
         static void Main(string[] args)
         {
             Console.WriteLine("Searching for GearVR controllers...");
-            var controllers = GearVRController.FindGearVRControllers();
+            var controllers = GearVRController.FindPairedGearVRControllersAsync().GetAwaiter().GetResult();
             Console.WriteLine($"Found {controllers.Count} controller(-s)");
 
-            var c = controllers.First();
-            c.ConnectAsync();
+            if (controllers.Count > 0) {
+                var c = controllers.First();
+                c.ConnectAsync();
+            }
+            
 
 
             Console.ReadKey();
