@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
 
@@ -17,10 +18,15 @@ namespace console_ble
 
             if (controllers.Count > 0) {
                 var c = controllers.First();
-                c.ConnectAsync();
-            }
-            
 
+                while (true) {
+                    Console.WriteLine("Try connecting...");
+                    var connected = c.ConnectAsync().GetAwaiter().GetResult();
+                    if (connected) {
+                        break;
+                    }                    
+                }                
+            }
 
             Console.ReadKey();
         }
