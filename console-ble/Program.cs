@@ -21,10 +21,13 @@ namespace console_ble
 
                 while (true) {
                     Console.WriteLine("Try connecting...");
-                    var connected = c.ConnectAsync().GetAwaiter().GetResult();
+                    
+                    var connected = c.Connect();
                     if (connected) {
                         break;
-                    }                    
+                    }
+
+                    Thread.Sleep(100);
                 }                
             }
 

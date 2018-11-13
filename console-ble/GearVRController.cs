@@ -33,11 +33,11 @@ namespace console_ble
         public GearVRController() {
         }
 
-        public async Task<bool> ConnectAsync() {
+        public bool Connect() {
             StopKeepAlive();
 
             // get BLE device
-            _bleDevice = await BluetoothLEDevice.FromIdAsync(_winDeviceId);
+            _bleDevice = BluetoothLEDevice.FromIdAsync(_winDeviceId).AsTask().GetAwaiter().GetResult();
 
             
 
@@ -48,7 +48,7 @@ namespace console_ble
             else {
                 Console.WriteLine("Not connected, waiting for connection...");
                 _bleDevice.ConnectionStatusChanged += OnConnectionAppeared;
-                await PingAsync();
+                Ping();
             }
 
 
@@ -61,17 +61,21 @@ namespace console_ble
 
 
             // get service
-            var getServicesResult = await _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached);
+            var getServicesResult = _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
             Console.WriteLine($"Get services status: {getServicesResult.Status}");
             var services = getServicesResult.Services;
-            GattDeviceService controllerService = services.Single(x => x.Uuid == UUID_CUSTOM_SERVICE);
+            
+            GattDeviceService controllerService = services.Where(x => x.Uuid == UUID_CUSTOM_SERVICE).FirstOrDefault();
+            if (controllerService == null) {
+                return false;
+            }
 
             // get characteristics
             
-            var getNotifyCharacteristicResult = await controllerService.GetCharacteristicsForUuidAsync(UUID_NOTIFY_CHARACTERISTIC);
+            var getNotifyCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_NOTIFY_CHARACTERISTIC).AsTask().GetAwaiter().GetResult();
             Console.WriteLine($"Getting notify characteristic success: {getNotifyCharacteristicResult.Status}");
 
-            var getWriteCharacteristicResult = await controllerService.GetCharacteristicsForUuidAsync(UUID_WRITE_CHARACTERISTIC);
+            var getWriteCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_WRITE_CHARACTERISTIC).AsTask().GetAwaiter().GetResult();
             Console.WriteLine($"Getting write characteristic success: {getWriteCharacteristicResult.Status}");
 
             if (getWriteCharacteristicResult.Status != GattCommunicationStatus.Success
@@ -85,8 +89,9 @@ namespace console_ble
             
             try {
                 // Write the ClientCharacteristicConfigurationDescriptor in order for server to send notifications.               
-                var result = await _notifyCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
-                                                            GattClientCharacteristicConfigurationDescriptorValue.Notify);
+                var result = _notifyCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                                                            GattClientCharacteristicConfigurationDescriptorValue.Notify)
+                                                            .AsTask().GetAwaiter().GetResult();
                 if (result == GattCommunicationStatus.Success) {
                     _notifyCharacteristic.ValueChanged += _notifyCharacteristic_ValueChanged;
                     
@@ -100,7 +105,7 @@ namespace console_ble
                 // Console.WriteLine($"WriteClientCharacteristicConfigurationDescriptorAsync success: {success}");
 
                 
-                var success = await InitialKickEvents();
+                var success = InitialKickEvents().GetAwaiter().GetResult();
                 Console.WriteLine($"Kick Events success: {success}");
                 
 
@@ -126,9 +131,9 @@ namespace console_ble
             _bleDevice.ConnectionStatusChanged -= OnConnectionAppeared;
         }
 
-        private async Task<GattDeviceServicesResult> PingAsync()
+        private GattDeviceServicesResult Ping()
         {
-            return await _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached);
+            return  _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
         }
 
 
@@ -137,7 +142,7 @@ namespace console_ble
                 Console.WriteLine("Start KeepAlive");
 
                 while (true) {
-                    var getServicesResult = await PingAsync();
+                    var getServicesResult = Ping();
                     Console.WriteLine($"KeepAlive result: {getServicesResult.Status}");
 
                     if (_bleDevice.ConnectionStatus == BluetoothConnectionStatus.Disconnected) {
