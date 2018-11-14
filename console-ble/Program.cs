@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -27,8 +28,7 @@ namespace console_ble
             CTRL_SHUTDOWN_EVENT = 6
         }
 
-
-        static List<GearVRController> _controllers;
+        
 
         static void Main(string[] args)
         {
@@ -36,27 +36,56 @@ namespace console_ble
             SetConsoleCtrlHandler(_handler, true);
 
 
-            Console.WriteLine("Searching for GearVR controllers...");
-            _controllers = GearVRController.FindPairedGearVRControllersAsync().GetAwaiter().GetResult();
-            Console.WriteLine($"Found {_controllers.Count} controller(-s)");
 
-            if (_controllers.Count > 0) {
-                var c = _controllers.First();
-                
+            Console.WriteLine("Getting unpaired devices...");
+            var unpaired = GearVRController.FindUnpairedControllersAddresses();
+            Console.WriteLine("Done.");
+
+            if (unpaired.Count > 0) {
+                var c = new GearVRController(unpaired[0]);
                 c.Connect();
-                
-                              
             }
+            
+            // pair all controllers
+            //foreach (var adr in addresses) {
+            //    Console.WriteLine($"Pairing device {adr}...");
+
+            //    var bleDevice = BluetoothLEDevice.FromBluetoothAddressAsync(adr).AsTask().GetAwaiter().GetResult();
+            //    bleDevice.DeviceInformation.Pairing.Custom.PairingRequested += (s, a) => { a.Accept(); };
+
+            //    //var unpairRes = bleDevice.DeviceInformation.Pairing.UnpairAsync().AsTask().GetAwaiter().GetResult();
+            //    //Console.WriteLine($"UnPairing result: {unpairRes.Status}");
+
+            //    ////while (!bleDevice.DeviceInformation.Pairing.CanPair) {
+            //    //    Thread.Sleep(5000);
+            //    ////}
+
+            //    var pairRes = bleDevice.DeviceInformation.Pairing.PairAsync().AsTask().GetAwaiter().GetResult();
+            //    Console.WriteLine($"Pairing result: {pairRes.Status}");
+            //}
+
+            //var paired = GearVRController.FindPairedGearVRControllersAsync().GetAwaiter().GetResult();
+
+            //Console.WriteLine($"Devices paired: {paired.Count}");
+
+            //if (paired.Count > 0) {
+            //    var c = paired[0];
+            //    c.Connect();
+            //}
+
+
+
 
             Console.ReadKey();
         }
+
+     
 
 
         private static bool ConsoleExitHandler(CtrlType sig)
         {
             Console.WriteLine("Exiting system due to external CTRL-C, or process kill, or shutdown");
-
-            _controllers.ForEach(c => c.Dispose());
+            
 
             //do your cleanup here
             //Thread.Sleep(5000); //simulate some cleanup delay

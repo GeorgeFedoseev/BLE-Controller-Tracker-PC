@@ -44,8 +44,9 @@ namespace console_ble
 
 
         // MAIN
-        private string _winDeviceId;
+        
         private BluetoothLEDevice _bleDevice;
+        private ulong _bluetoothAddress;
 
         bool homeButton = false;
         bool backButton = false;
@@ -60,6 +61,15 @@ namespace console_ble
         // MadgwickAHRS 
         MadgwickAHRS _ahrs;
         
+        public float[] Quaternion {
+            get {
+                if (_ahrs != null) {
+                    return _ahrs.Quaternion;
+                }
+
+                return new float[] { 0, 0, 0, 0 };
+            }
+        }
 
         // SENSOR DATA PARSING
         private byte[] eventData = new byte[60];
@@ -84,7 +94,10 @@ namespace console_ble
         private Thread _monitorThread;
         
 
-        public GearVRController() {
+        public GearVRController(ulong bluetoothAddress) {
+            _bluetoothAddress = bluetoothAddress;
+        
+
             _ahrs = new MadgwickAHRS(
                 samplePeriod: 68.84681583453657f, // Madgwick is sensitive to this
                 beta: 0.352f
@@ -220,10 +233,19 @@ namespace console_ble
 
             // untill reach
             while (true) {
-                Console.WriteLine("Trying to connect...");
+                Console.WriteLine($"Trying to connect to {_bluetoothAddress}...");
+
+                //// check if paired
+                //if (!IsPaired()) {
+                //    Console.WriteLine("BLE device is not paired!");
+                //}
+
+                
+
                 var res = TryGetGattServices();
 
-                if (res.Status == GattCommunicationStatus.Success) {
+                if (res) {
+                    Console.WriteLine("break");
                     break;
                 }
 
@@ -232,13 +254,26 @@ namespace console_ble
          
             Console.WriteLine($"Device connection status: {_bleDevice.ConnectionStatus}");
 
+            // unpair
+            var deviceUnpairingRes =_bleDevice.DeviceInformation.Pairing.UnpairAsync().AsTask().GetAwaiter().GetResult();
+            Console.WriteLine($"Device unpairing result: {deviceUnpairingRes.Status}");
+
+            Console.WriteLine($"_bleDevice.DeviceInformation.Pairing.IsPaired: {_bleDevice.DeviceInformation.Pairing.IsPaired}");
+            
+
+            // pair
+            Console.WriteLine("Attempt pairing...");
+            var pairRes = PairAsync().GetAwaiter().GetResult();
+            Console.WriteLine($"Pairing result: {pairRes.Status}");
+
 
             // get service
             var getServicesResult = _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
             Console.WriteLine($"Get services status: {getServicesResult.Status}");
             var services = getServicesResult.Services;
             
-            GattDeviceService controllerService = services.Where(x => x.Uuid == UUID_CUSTOM_SERVICE).FirstOrDefault();
+            var controllerService = services.Where(x => x.Uuid == UUID_CUSTOM_SERVICE).FirstOrDefault();
+            
             if (controllerService == null) {
                 _connectionInProgress = false;
                 return false;
@@ -297,23 +332,32 @@ namespace console_ble
             _connectionInProgress = false;
             return true;
         }
+
+
+        private async Task<DevicePairingResult> PairAsync() {
+            _bleDevice.DeviceInformation.Pairing.Custom.PairingRequested += (s, args) => {
+                args.Accept();
+            };
+            return await _bleDevice.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly, DevicePairingProtectionLevel.None);
+        }
         
         // ping to BLE device
-        private GattDeviceServicesResult TryGetGattServices()
+        private bool TryGetGattServices()
         {
             Console.WriteLine("Trying to get GATT services...");
             //return  _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            _bleDevice = BluetoothLEDevice.FromIdAsync(_winDeviceId).AsTask().GetAwaiter().GetResult();
-            Console.WriteLine("Got BLE device");
-            var res = _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            Console.WriteLine($"Result: {res.Status}");
-
-            if (res.Status == GattCommunicationStatus.Unreachable) {
-                _bleDevice.Dispose();
-                _bleDevice = null;
+            _bleDevice = BluetoothLEDevice.FromBluetoothAddressAsync(_bluetoothAddress).AsTask().GetAwaiter().GetResult();
+                      
+            if (_bleDevice == null) {
+                return false;
             }
+            Console.WriteLine("Got BLE device");
 
-            return res;
+            var res = _bleDevice.GetGattServicesForUuidAsync(UUID_CUSTOM_SERVICE, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
+
+            Console.WriteLine("Got services");
+
+            return true;
         }
         
         // COMANDS FOR GearVR Controller
@@ -341,6 +385,10 @@ namespace console_ble
 
         private async Task<bool> SendPowerOff()
         {
+            if (_writeCharacteristic == null) {
+                return false;
+            }
+
             var writer = new Windows.Storage.Streams.DataWriter();
             short val = CMD_OFF;
             writer.WriteInt16(val);
@@ -350,9 +398,18 @@ namespace console_ble
             return success;
         }
 
+        //private bool IsPaired()
+        //{
+        //    var unpairedDevices = FindUnpairedControllersAddresses();
+        //    return !unpairedDevices.Contains(_bluetoothAddress);
+        //}
+
         private void _Disconnect() {
             if (_connected) {
-                SendPowerOff().GetAwaiter().GetResult();
+                try {
+                    SendPowerOff().GetAwaiter().GetResult();
+                }
+                catch { }                
             }
             _connected = false;
             if (_notifyCharacteristic != null) {
@@ -394,15 +451,73 @@ namespace console_ble
             var devices = await DeviceInformation.FindAllAsync(GattDeviceService.GetDeviceSelectorFromUuid(UUID_CUSTOM_SERVICE), null);
 
             foreach (var device in devices) {
-                var controller = new GearVRController();
-                
-                controller._winDeviceId = device.Id;
+                var bleDevice = await BluetoothLEDevice.FromIdAsync(device.Id);
+                var controller = new GearVRController(bleDevice.BluetoothAddress);
                 result.Add(controller);
             }
 
             return result;
         }
 
-       
+
+        //public static async Task<List<ulong>> FindUnpairedAsync()
+        //{
+        //    var result = new List<ulong>();
+
+
+        //    var devices = await DeviceInformation.FindAllAsync(BluetoothLEDevice.GetDeviceSelectorFromPairingState(false));
+        //    foreach (var d in devices) {
+        //        var bleDevice = await BluetoothLEDevice.FromIdAsync(d.Id);
+        //        //Console.WriteLine($"Unpaired device: {bleDevice.}");
+        //    }
+
+        //    return result;
+        //}
+
+        public static List<ulong> FindUnpairedControllersAddresses()
+        {
+            var result = new List<ulong>();
+
+            var _bleWatcher = new BluetoothLEAdvertisementWatcher {
+                ScanningMode = BluetoothLEScanningMode.Active
+            };
+
+
+            _bleWatcher.Received += (w, btAdv) => {
+
+                
+
+                if (!btAdv.Advertisement.LocalName.Contains("Gear VR Controller")) {
+                    return;
+                }
+
+                
+
+                if (result.Any(x => x == btAdv.BluetoothAddress)) {
+                    // already added
+                    return;
+                }
+
+                Console.WriteLine("Found " + btAdv.Advertisement.LocalName);
+
+                result.Add(btAdv.BluetoothAddress);
+
+            };
+
+            _bleWatcher.Start();
+
+            var sw = new Stopwatch();
+            sw.Start();
+            while (result.Count == 0 || sw.Elapsed.TotalSeconds < SEARCH_TIME_SECONDS) {
+                Thread.Sleep(100);
+            }
+            _bleWatcher.Stop();
+
+
+
+            return result;
+        }
+
+
     }
 }
