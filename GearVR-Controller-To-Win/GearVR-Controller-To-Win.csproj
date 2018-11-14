@@ -7,7 +7,7 @@
     <ProjectGuid>{FB253D3D-06B9-4ECE-A2BB-5BDDF788E9DD}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>console_ble</RootNamespace>
-    <AssemblyName>console-ble</AssemblyName>
+    <AssemblyName>GearVR-Controller-To-Win</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <TargetPlatformVersion>10.0</TargetPlatformVersion>
     <FileAlignment>512</FileAlignment>
