@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Windows.Devices.Bluetooth;
 
-namespace console_ble
+namespace gearvr_controller_to_win
 {
     class Program
     {
@@ -34,17 +34,22 @@ namespace console_ble
         {
             _handler += new EventHandler(ConsoleExitHandler);
             SetConsoleCtrlHandler(_handler, true);
-            
-            Console.WriteLine("Getting unpaired devices...");
-            var unpaired = GearVRController.FindUnpairedControllersAddresses();
-            Console.WriteLine("Done.");
 
-            if (unpaired.Count > 0) {
-                var c = new GearVRController(unpaired[0]);
-                c.Connect();
+            // CONFIG
+            // init config
+            var config = Config.Main;
+            if(config == null) {
+                Console.ReadKey(); return;
+            }
+            else {
+                Console.WriteLine("Config loaded.");
             }
 
-            Console.ReadKey();
+
+
+
+            new ControllersTracker().Run();
+            while (true) { Thread.Sleep(100); }
         }
 
      

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace console_ble
+namespace gearvr_controller_to_win
 {
     public static class Extensions
     {

@@ -16,10 +16,12 @@ using System.Runtime.InteropServices.WindowsRuntime;
 
 using AHRS;
 
-namespace console_ble
+namespace gearvr_controller_to_win
 {
-    class GearVRController: IDisposable
+    class GearVRController : IDisposable
     {
+
+        public Action<GearVRController> OnSensorDataUpdated = (_) => { };
 
         static float SEARCH_TIME_SECONDS = 3;
         static float NO_DATA_CONNECTED_THRESHOLD_SECONDS = 5f;
@@ -84,6 +86,11 @@ namespace console_ble
         // CONTROL bools
         private volatile bool _wantToConnect = false;
 
+        public bool IsConnected {
+            get {
+                return _connected;
+            }
+        }
         private volatile bool _connected = false;
         private volatile bool _connectionInProgress = false;
 
@@ -110,7 +117,7 @@ namespace console_ble
         }
 
         // PUBLIC
-        public void Connect()
+        public void ConnectAsync()
         {
             _wantToConnect = true;
         }
@@ -189,7 +196,9 @@ namespace console_ble
 
             var temperature = eventData[57];
 
-            Console.WriteLine($"trigger: {triggerButton}, home: {homeButton}, back: {backButton}, Q: {string.Join(", ", _ahrs.Quaternion)}");
+
+            OnSensorDataUpdated(this);
+            //Console.WriteLine($"trigger: {triggerButton}, home: {homeButton}, back: {backButton}, Q: {string.Join(", ", _ahrs.Quaternion)}");
         }
 
         float getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(byte[] arrayBuffer, int offset, int index) {             
@@ -235,12 +244,7 @@ namespace console_ble
             while (true) {
                 Console.WriteLine($"Trying to connect to {_bluetoothAddress}...");
 
-                //// check if paired
-                //if (!IsPaired()) {
-                //    Console.WriteLine("BLE device is not paired!");
-                //}
-
-                
+            
 
                 var res = TryGetGattServices();
 
@@ -442,7 +446,7 @@ namespace console_ble
         //public static async Task<List<GearVRController>> FindPairedGearVRControllersAsync()
         //{
         //    var result = new List<GearVRController>();
-            
+
         //    var devices = await DeviceInformation.FindAllAsync(GattDeviceService.GetDeviceSelectorFromUuid(UUID_CUSTOM_SERVICE), null);
 
         //    foreach (var device in devices) {
@@ -455,8 +459,10 @@ namespace console_ble
         //}
 
 
+        
 
-        public static List<ulong> FindUnpairedControllersAddresses()
+
+        public static List<ulong> FindUnpairedControllersAddresses(List<string> acceptNames = null)
         {
             var result = new List<ulong>();
 
@@ -467,11 +473,19 @@ namespace console_ble
 
             _bleWatcher.Received += (w, btAdv) => {
 
-                
 
-                if (!btAdv.Advertisement.LocalName.Contains("Gear VR Controller")) {
-                    return;
+                if (acceptNames != null) {
+                    if (!acceptNames.Any(x => btAdv.Advertisement.LocalName == x)) {
+                        return;
+                    }
                 }
+                else {
+                    if (!btAdv.Advertisement.LocalName.Contains("Gear VR Controller")) {
+                        return;
+                    }
+                }
+
+                
 
                 
 
