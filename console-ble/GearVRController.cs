@@ -27,35 +27,44 @@ namespace console_ble
 
         private GattCharacteristic _notifyCharacteristic, _writeCharacteristic;
 
-        Thread _keepAliveThread;
+        private volatile bool _connected = false;
         
 
         public GearVRController() {
         }
 
         public bool Connect() {
-            StopKeepAlive();
 
-            // get BLE device
-            _bleDevice = BluetoothLEDevice.FromIdAsync(_winDeviceId).AsTask().GetAwaiter().GetResult();
+            bool connected = false;
 
-            
+            while (!connected) {
+                Console.WriteLine("Try connect...");
+                var res = Ping();
 
-            Console.WriteLine($"Connection status: {_bleDevice.ConnectionStatus}");
-            if (_bleDevice.ConnectionStatus == BluetoothConnectionStatus.Connected) {
-                StartKeepAlive();
-            }
-            else {
-                Console.WriteLine("Not connected, waiting for connection...");
-                _bleDevice.ConnectionStatusChanged += OnConnectionAppeared;
-                Ping();
+                if (res.Status == GattCommunicationStatus.Success) {
+                    break;
+                }
+
+                Thread.Sleep(1000);
             }
 
+           // StartKeepAlive();
+
+            //Console.WriteLine($"Connection status: {_bleDevice.ConnectionStatus}");
+            //if (_bleDevice.ConnectionStatus == BluetoothConnectionStatus.Connected) {
+            //    StartKeepAlive();
+            //}
+            //else {
+            //    Console.WriteLine("Not connected, waiting for connection...");
+            //    _bleDevice.ConnectionStatusChanged += OnConnectionAppeared;
+            //    Ping();
+            //}
 
 
-            while (_keepAliveThread == null) {
-                Thread.Sleep(100);
-            }
+
+            //while (_keepAliveThread == null) {
+            //    Thread.Sleep(100);
+            //}
 
             Console.WriteLine($"Device connection status: {_bleDevice.ConnectionStatus}");
 
@@ -72,10 +81,10 @@ namespace console_ble
 
             // get characteristics
             
-            var getNotifyCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_NOTIFY_CHARACTERISTIC).AsTask().GetAwaiter().GetResult();
+            var getNotifyCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_NOTIFY_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
             Console.WriteLine($"Getting notify characteristic success: {getNotifyCharacteristicResult.Status}");
 
-            var getWriteCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_WRITE_CHARACTERISTIC).AsTask().GetAwaiter().GetResult();
+            var getWriteCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_WRITE_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
             Console.WriteLine($"Getting write characteristic success: {getWriteCharacteristicResult.Status}");
 
             if (getWriteCharacteristicResult.Status != GattCommunicationStatus.Success
@@ -107,7 +116,10 @@ namespace console_ble
                 
                 var success = InitialKickEvents().GetAwaiter().GetResult();
                 Console.WriteLine($"Kick Events success: {success}");
-                
+
+                success = SetKeepAlive().GetAwaiter().GetResult();
+                Console.WriteLine($"KeepAlive success: {success}");
+
 
             }
             catch (Exception ex) {
@@ -121,49 +133,44 @@ namespace console_ble
         }
 
 
-        private void OnConnectionAppeared(BluetoothLEDevice device, object args) {
-
-            Console.WriteLine($"Connection status changed: {device.ConnectionStatus}");
-            if (_bleDevice.ConnectionStatus == BluetoothConnectionStatus.Connected) {
-                StartKeepAlive();
-            }
-
-            _bleDevice.ConnectionStatusChanged -= OnConnectionAppeared;
-        }
+     
 
         private GattDeviceServicesResult Ping()
         {
-            return  _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
+            Console.WriteLine("Pinging...");
+            //return  _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
+            _bleDevice = BluetoothLEDevice.FromIdAsync(_winDeviceId).AsTask().GetAwaiter().GetResult();
+            Console.WriteLine("Got BLE device");
+            var res = _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
+            Console.WriteLine($"Ping result: {res.Status}");
+            return res;
         }
 
 
-        private void StartKeepAlive() {
-            _keepAliveThread = new Thread(async () => {
-                Console.WriteLine("Start KeepAlive");
-
-                while (true) {
-                    var getServicesResult = Ping();
-                    Console.WriteLine($"KeepAlive result: {getServicesResult.Status}");
-
-                    if (_bleDevice.ConnectionStatus == BluetoothConnectionStatus.Disconnected) {
-                        _bleDevice.ConnectionStatusChanged += OnConnectionAppeared;
-                        break;
-                    }
-
-                    Thread.Sleep(1000);
-                }
-            });
-            _keepAliveThread.IsBackground = true;
-            _keepAliveThread.Start();
+        //private void StartKeepAlive() {
             
-        }
 
-        private void StopKeepAlive() {
-            if (_keepAliveThread != null) {
-                _keepAliveThread.Abort();
-                _keepAliveThread = null;
-            }
-        }
+        //    _keepAliveThread = new Thread(async () => {
+        //        Console.WriteLine("Start KeepAlive");
+
+        //        while (true) {
+        //            var getServicesResult = Ping();
+        //            Console.WriteLine($"KeepAlive result: {getServicesResult.Status}");
+                    
+        //            Thread.Sleep(1000);
+        //        }
+        //    });
+        //    _keepAliveThread.IsBackground = true;
+        //    _keepAliveThread.Start();
+            
+        //}
+
+        //private void StopKeepAlive() {
+        //    if (_keepAliveThread != null) {
+        //        _keepAliveThread.Abort();
+        //        _keepAliveThread = null;
+        //    }
+        //}
 
         private void _notifyCharacteristic_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
@@ -174,6 +181,17 @@ namespace console_ble
         {
             var writer = new Windows.Storage.Streams.DataWriter();
             short val = 0x0100;
+            writer.WriteInt16(val);
+            GattCommunicationStatus writeResult = await _writeCharacteristic.WriteValueAsync(writer.DetachBuffer());
+
+            bool success = writeResult == GattCommunicationStatus.Success;
+            return success;
+        }
+
+        private async Task<bool> SetKeepAlive()
+        {
+            var writer = new Windows.Storage.Streams.DataWriter();
+            short val = 0x0400;
             writer.WriteInt16(val);
             GattCommunicationStatus writeResult = await _writeCharacteristic.WriteValueAsync(writer.DetachBuffer());
 

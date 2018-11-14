@@ -27,7 +27,7 @@ namespace console_ble
                         break;
                     }
 
-                    Thread.Sleep(100);
+                    Thread.Sleep(1000);
                 }                
             }
 
