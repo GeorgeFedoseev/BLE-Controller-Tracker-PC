@@ -8,5 +8,5 @@
   ],
 
   "oscReceiverIPAddress": "127.0.0.1",
-  "oscReceiverPort": 5555
+  "oscReceiverPort": 7003
 }
