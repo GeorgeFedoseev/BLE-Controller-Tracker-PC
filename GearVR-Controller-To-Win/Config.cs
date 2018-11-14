@@ -12,6 +12,8 @@ namespace gearvr_controller_to_win
     [Serializable]
     public class Config
     {
+        public string oscReceiverIPAddress;
+        public int oscReceiverPort;
         public List<ControllerConfig> controllersToTrack;
 
 
@@ -69,6 +71,7 @@ namespace gearvr_controller_to_win
     public class ControllerConfig
     {
         public string name;
+        public string oscAddress;
 
     }
 

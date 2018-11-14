@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 
 namespace gearvr_controller_to_win
 {
-    class ControllersTracker
+    class ControllersTracker: IDisposable
     {
 
         private List<GearVRController> _controllers;
+
+        private OSCTransmitter _transmitter;
 
         public void Run() {
 
@@ -27,9 +29,23 @@ namespace gearvr_controller_to_win
                 c.ConnectAsync();
                 _controllers.Add(c);
             }
-            
 
+            // start transmitter
+            _transmitter = new OSCTransmitter(_controllers);
+            _transmitter.Start();
             
+        }
+
+        public void Dispose()
+        {
+            if (_transmitter != null) {
+                _transmitter.Dispose();
+                _transmitter = null;
+            }
+
+            foreach (var c in _controllers) {
+                c.Dispose();
+            }
         }
     }
 }

@@ -28,7 +28,7 @@ namespace gearvr_controller_to_win
             CTRL_SHUTDOWN_EVENT = 6
         }
 
-        
+        private static ControllersTracker _tracker;
 
         static void Main(string[] args)
         {
@@ -48,7 +48,9 @@ namespace gearvr_controller_to_win
 
 
 
-            new ControllersTracker().Run();
+            _tracker = new ControllersTracker();
+            _tracker.Run();
+
             while (true) { Thread.Sleep(100); }
         }
 
@@ -58,15 +60,13 @@ namespace gearvr_controller_to_win
         private static bool ConsoleExitHandler(CtrlType sig)
         {
             Console.WriteLine("Exiting system due to external CTRL-C, or process kill, or shutdown");
-            
+
 
             //do your cleanup here
-            //Thread.Sleep(5000); //simulate some cleanup delay
+            _tracker.Dispose();
 
             Console.WriteLine("Cleanup complete");
-
-            //allow main to run off
-            //exitSystem = true;
+            
 
             //shutdown right away so there are no lingering threads
             Environment.Exit(-1);

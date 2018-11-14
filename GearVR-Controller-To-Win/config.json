@@ -1,0 +1,12 @@
+{
+
+  "controllersToTrack": [
+    {
+      "name": "Gear VR Controller(A52C)",
+      "oscAddress":  "/c1"
+    }
+  ],
+
+  "oscReceiverIPAddress": "127.0.0.1",
+  "oscReceiverPort": 5555
+}

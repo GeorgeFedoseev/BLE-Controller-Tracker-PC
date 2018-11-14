@@ -62,12 +62,28 @@
     <Compile Include="ControllersTracker.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="GearVRController.cs" />
+    <Compile Include="GearVRControllerTrackingData.cs" />
     <Compile Include="MadgwickAHRS.cs" />
+    <Compile Include="OSCTransmitter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Sharp.OSC\Extensions.cs" />
+    <Compile Include="Sharp.OSC\Midi.cs" />
+    <Compile Include="Sharp.OSC\OscBundle.cs" />
+    <Compile Include="Sharp.OSC\OscMessage.cs" />
+    <Compile Include="Sharp.OSC\OscPacket.cs" />
+    <Compile Include="Sharp.OSC\RGBA.cs" />
+    <Compile Include="Sharp.OSC\Symbol.cs" />
+    <Compile Include="Sharp.OSC\Timetag.cs" />
+    <Compile Include="Sharp.OSC\UDPListener.cs" />
+    <Compile Include="Sharp.OSC\UDPSender.cs" />
+    <Compile Include="Sharp.OSC\Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="config.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

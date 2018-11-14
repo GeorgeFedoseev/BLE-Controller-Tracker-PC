@@ -46,32 +46,30 @@ namespace gearvr_controller_to_win
 
 
         // MAIN
+
+        public string Name {
+            get {
+                return _bleDevice != null ? _bleDevice.Name : "NULL";
+            }
+        }
         
         private BluetoothLEDevice _bleDevice;
         private ulong _bluetoothAddress;
 
-        bool homeButton = false;
-        bool backButton = false;
-        bool volumeDownButton = false;
-        bool volumeUpButton = false;
-        bool triggerButton = false;
-        bool touchpadButton = false;
-        bool touchpadPressed = false;
-        private int touchpadX = 0;
-        private int touchpadY = 0;
+        public GearVRControllerTrackingData trackingData = new GearVRControllerTrackingData();
 
         // MadgwickAHRS 
         MadgwickAHRS _ahrs;
         
-        public float[] Quaternion {
-            get {
-                if (_ahrs != null) {
-                    return _ahrs.Quaternion;
-                }
+        //public float[] Quaternion {
+        //    get {
+        //        if (_ahrs != null) {
+        //            return _ahrs.Quaternion;
+        //        }
 
-                return new float[] { 0, 0, 0, 0 };
-            }
-        }
+        //        return new float[] { 0, 0, 0, 0 };
+        //    }
+        //}
 
         // SENSOR DATA PARSING
         private byte[] eventData = new byte[60];
@@ -185,14 +183,16 @@ namespace gearvr_controller_to_win
                     mag[1],
                     mag[2]
                 );
-            
-            triggerButton = 0 != (eventData[58] & (1 << 0));
-            homeButton = 0 != (eventData[58] & (1 << 1));
-            backButton = 0 != (eventData[58] & (1 << 2));
-            touchpadButton = 0 != (eventData[58] & (1 << 3));
-            volumeDownButton = 0 != (eventData[58] & (1 << 4));
-            volumeUpButton = 0 != (eventData[58] & (1 << 5));
-            touchpadPressed = touchpadX != 0 && touchpadY != 0;
+
+            trackingData.quaternion = _ahrs.Quaternion;
+
+            trackingData.triggerButton = 0 != (eventData[58] & (1 << 0));
+            trackingData.homeButton = 0 != (eventData[58] & (1 << 1));
+            trackingData.backButton = 0 != (eventData[58] & (1 << 2));
+            trackingData.touchpadButton = 0 != (eventData[58] & (1 << 3));
+            trackingData.volumeDownButton = 0 != (eventData[58] & (1 << 4));
+            trackingData.volumeUpButton = 0 != (eventData[58] & (1 << 5));
+            trackingData.touchpadPressed = trackingData.touchpadX != 0 && trackingData.touchpadY != 0;
 
             var temperature = eventData[57];
 
@@ -410,7 +410,7 @@ namespace gearvr_controller_to_win
                 }
                 catch { }                
             }
-            _connected = false;
+            
             if (_notifyCharacteristic != null) {
                 _notifyCharacteristic.ValueChanged -= _notifyCharacteristic_ValueChanged;
                 _notifyCharacteristic = null;
@@ -418,6 +418,7 @@ namespace gearvr_controller_to_win
                 _bleDevice.Dispose();
                 _bleDevice = null;
             }
+            _connected = false;
         }
 
 
