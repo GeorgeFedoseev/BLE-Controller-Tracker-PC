@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -9,6 +10,11 @@ using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
+using Windows.Storage.Streams;
+
+using System.Runtime.InteropServices.WindowsRuntime;
+
+using AHRS;
 
 namespace console_ble
 {
@@ -32,11 +38,40 @@ namespace console_ble
         static short CMD_LPM_DISABLE = 0x0700;
         static short CMD_VR_MODE = 0x0800;
 
+        static float GYRO_FACTOR      = 0.0001f; // to radians / s
+        static float ACCEL_FACTOR     = 0.00001f; // to g (9.81 m/s**2)
+        static float TIMESTAMP_FACTOR = 0.001f; // to seconds
+
+
+        // MAIN
         private string _winDeviceId;
         private BluetoothLEDevice _bleDevice;
 
+        bool homeButton = false;
+        bool backButton = false;
+        bool volumeDownButton = false;
+        bool volumeUpButton = false;
+        bool triggerButton = false;
+        bool touchpadButton = false;
+        bool touchpadPressed = false;
+        private int touchpadX = 0;
+        private int touchpadY = 0;
+
+        // MadgwickAHRS 
+        MadgwickAHRS _ahrs;
+        
+
+        // SENSOR DATA PARSING
+        private byte[] eventData = new byte[60];
+        private int[] eventAnalysis = new int[60 * 8];
+        private int[] eventBits = new int[60 * 8];
+        int eventAnalysisThr = 80;
+           
+
+        // BLE characteristics
         private GattCharacteristic _notifyCharacteristic, _writeCharacteristic;
 
+        // CONTROL bools
         private volatile bool _wantToConnect = false;
 
         private volatile bool _connected = false;
@@ -44,10 +79,17 @@ namespace console_ble
 
         private DateTime _lastTimeReceivedDataFromController = DateTime.MinValue;
 
+
+        // MONITOR
         private Thread _monitorThread;
         
 
         public GearVRController() {
+            _ahrs = new MadgwickAHRS(
+                samplePeriod: 68.84681583453657f, // Madgwick is sensitive to this
+                beta: 0.352f
+            );
+
             // start MonotorThread
             _monitorThread = new Thread(MonitorThreadWorker);
             _monitorThread.IsBackground = true;
@@ -83,6 +125,86 @@ namespace console_ble
                 }
             }
         }
+
+
+        // VALUES PARSING
+        void ParseSensorData(IBuffer characteristicValue) {
+            if (eventData.Length != characteristicValue.Length)
+                eventData = new byte[characteristicValue.Length];
+
+            DataReader.FromBuffer(characteristicValue).ReadBytes(eventData);
+
+            var buffer = characteristicValue.ToArray();
+
+            var accelerometer = new List<float> {
+                getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 4, 0),
+                getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 6, 0),
+                getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 8, 0)
+            }.Select(x => x * ACCEL_FACTOR).ToList();
+
+            var gyro = new List<float> {
+                getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(buffer, 10, 0),
+                getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(buffer, 12, 0),
+                getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(buffer, 14, 0)
+            }.Select(x => x * GYRO_FACTOR).ToList();
+
+            var mag = new List<float> {
+                getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 0),
+                getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 2),
+                getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 4)
+            };
+
+            _ahrs.Update(
+                    gyro[0],
+                    gyro[1],
+                    gyro[2],
+                    accelerometer[0],
+                    accelerometer[1],
+                    accelerometer[2],
+                    mag[0],
+                    mag[1],
+                    mag[2]
+                );
+            
+            triggerButton = 0 != (eventData[58] & (1 << 0));
+            homeButton = 0 != (eventData[58] & (1 << 1));
+            backButton = 0 != (eventData[58] & (1 << 2));
+            touchpadButton = 0 != (eventData[58] & (1 << 3));
+            volumeDownButton = 0 != (eventData[58] & (1 << 4));
+            volumeUpButton = 0 != (eventData[58] & (1 << 5));
+            touchpadPressed = touchpadX != 0 && touchpadY != 0;
+
+            var temperature = eventData[57];
+
+            Console.WriteLine($"trigger: {triggerButton}, home: {homeButton}, back: {backButton}, Q: {string.Join(", ", _ahrs.Quaternion)}");
+        }
+
+        float getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(byte[] arrayBuffer, int offset, int index) {             
+            var arrayOfShort = arrayBuffer.Slice(16 * index + offset, 16 * index + offset + 2).Select(x => (short)x).ToList();
+            return arrayOfShort[0] * 10000.0f * 9.80665f / 2048.0f;
+        }
+
+        float getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(byte[] arrayBuffer, int offset, int index) {
+            var arrayOfShort = arrayBuffer.Slice(16 * index + offset, 16 * index + offset + 2).Select(x => (short)x).ToList();
+            return arrayOfShort[0] * 10000.0f * 0.017453292f / 14.285f;
+        }
+
+        float getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(byte[] arrayBuffer, int offset) {
+            var arrayOfShort = arrayBuffer.Slice(32 + offset, 32 + offset + 2);
+            return arrayOfShort[0] * 0.06f;
+        }
+
+        private int GetBitValue(int start, int end)
+        {
+            int val = 0;
+
+            for (int i = start; i <= end; i++) {
+                val += eventBits[i] * (1 << (i - start));
+            }
+
+            return val;
+        }
+
 
 
         // CONNECTION
@@ -248,7 +370,8 @@ namespace console_ble
         {
             _lastTimeReceivedDataFromController = DateTime.Now;
             _connected = true;
-            Console.WriteLine($"changed {DateTime.Now}");
+            //Console.WriteLine($"changed {DateTime.Now}");
+            ParseSensorData(args.CharacteristicValue);
         }
 
         public void Dispose()
