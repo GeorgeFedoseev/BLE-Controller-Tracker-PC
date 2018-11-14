@@ -398,11 +398,6 @@ namespace console_ble
             return success;
         }
 
-        //private bool IsPaired()
-        //{
-        //    var unpairedDevices = FindUnpairedControllersAddresses();
-        //    return !unpairedDevices.Contains(_bluetoothAddress);
-        //}
 
         private void _Disconnect() {
             if (_connected) {
@@ -444,35 +439,22 @@ namespace console_ble
 
         // STATIC
 
-        public static async Task<List<GearVRController>> FindPairedGearVRControllersAsync()
-        {
-            var result = new List<GearVRController>();
-            
-            var devices = await DeviceInformation.FindAllAsync(GattDeviceService.GetDeviceSelectorFromUuid(UUID_CUSTOM_SERVICE), null);
-
-            foreach (var device in devices) {
-                var bleDevice = await BluetoothLEDevice.FromIdAsync(device.Id);
-                var controller = new GearVRController(bleDevice.BluetoothAddress);
-                result.Add(controller);
-            }
-
-            return result;
-        }
-
-
-        //public static async Task<List<ulong>> FindUnpairedAsync()
+        //public static async Task<List<GearVRController>> FindPairedGearVRControllersAsync()
         //{
-        //    var result = new List<ulong>();
+        //    var result = new List<GearVRController>();
+            
+        //    var devices = await DeviceInformation.FindAllAsync(GattDeviceService.GetDeviceSelectorFromUuid(UUID_CUSTOM_SERVICE), null);
 
-
-        //    var devices = await DeviceInformation.FindAllAsync(BluetoothLEDevice.GetDeviceSelectorFromPairingState(false));
-        //    foreach (var d in devices) {
-        //        var bleDevice = await BluetoothLEDevice.FromIdAsync(d.Id);
-        //        //Console.WriteLine($"Unpaired device: {bleDevice.}");
+        //    foreach (var device in devices) {
+        //        var bleDevice = await BluetoothLEDevice.FromIdAsync(device.Id);
+        //        var controller = new GearVRController(bleDevice.BluetoothAddress);
+        //        result.Add(controller);
         //    }
 
         //    return result;
         //}
+
+
 
         public static List<ulong> FindUnpairedControllersAddresses()
         {
