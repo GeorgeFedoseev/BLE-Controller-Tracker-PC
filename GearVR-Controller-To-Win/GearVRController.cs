@@ -104,7 +104,7 @@ namespace gearvr_controller_to_win
         
 
             _ahrs = new MadgwickAHRS(
-                samplePeriod: 68.84681583453657f, // Madgwick is sensitive to this
+                samplePeriod: 1/68.84681583453657f, // Madgwick is sensitive to this
                 beta: 0.352f
             );
 
@@ -153,44 +153,63 @@ namespace gearvr_controller_to_win
             DataReader.FromBuffer(characteristicValue).ReadBytes(eventData);
 
             var buffer = characteristicValue.ToArray();
+            //Array.Reverse(buffer);
 
             var accelerometer = new List<float> {
-                getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(eventData, 4, 0),
-                getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(eventData, 6, 0),
-                getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(eventData, 8, 0)
+                getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 4, 0),
+                getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 6, 0),
+                getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 8, 0)
             }.Select(x => x * ACCEL_FACTOR).ToList();
 
             var gyro = new List<float> {
-                getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(eventData, 10, 0),
-                getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(eventData, 12, 0),
-                getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(eventData, 14, 0)
+                getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(buffer, 10, 0),
+                getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(buffer, 12, 0),
+                getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(buffer, 14, 0)
             }.Select(x => x * GYRO_FACTOR).ToList();
 
             var mag = new List<float> {
-                getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(eventData, 0),
-                getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(eventData, 2),
-                getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(eventData, 4)
+                getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 0),
+                getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 2),
+                getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(buffer, 4)
             };
 
-            Console.WriteLine(string.Format("{0,5:###.0} {1,5:###.0} {2,5:###.0}",
-                gyro[0],
-                gyro[1],
-                gyro[2]
-                ));
+            
+
+            //Console.WriteLine(string.Format("{0,5:###.0} {1,5:###.0} {2,5:###.0}",
+            //    gyro[0],
+            //    gyro[1],
+            //    gyro[2]
+            //    ));
+
+            //Console.WriteLine(string.Format("{0,5:###.0} {1,5:###.0} {2,5:###.0}",
+            //    accelerometer[0],
+            //    accelerometer[1],
+            //    accelerometer[2]
+            //    ));
+
+            //Console.WriteLine(string.Format("{0,5:###.0} {1,5:###.0} {2,5:###.0}",
+            //    mag[0],
+            //    mag[1],
+            //    mag[2]
+            //    ));
 
             _ahrs.Update(
-                    gyro[0],
-                    gyro[1],
-                    gyro[2],
-                    accelerometer[0],
-                    accelerometer[1],
-                    accelerometer[2],
-                    mag[0],
-                    mag[1],
-                    mag[2]
+                gyro[0],
+                gyro[1],
+                gyro[2],
+                accelerometer[0],
+                accelerometer[1],
+                accelerometer[2]
                 );
 
-            trackingData.quaternion = _ahrs.Quaternion;
+
+            // change quaternion format to Unity one
+            trackingData.quaternion = new float[] {
+                -_ahrs.Quaternion[1],
+                -_ahrs.Quaternion[3],
+                -_ahrs.Quaternion[2],
+                _ahrs.Quaternion[0]
+            };
 
 
             trackingData.touchpadX = (
@@ -223,26 +242,29 @@ namespace gearvr_controller_to_win
 
         float getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(byte[] arrayBuffer, int offset, int index) {             
             var arrayOfBytes = arrayBuffer.Slice(16 * index + offset, 16 * index + offset + 2);
-            if (BitConverter.IsLittleEndian) {
-                Array.Reverse(arrayOfBytes);
-            }
+            //if (BitConverter.IsLittleEndian) {
+            //    arrayOfBytes = arrayOfBytes.ToArray();
+            //    Array.Reverse(arrayOfBytes);
+            //}
             return BitConverter.ToInt16(arrayOfBytes, 0) * 10000.0f * 9.80665f / 2048.0f;
         }
 
         float getGyroscopeFloatWithOffsetFromArrayBufferAtIndex(byte[] arrayBuffer, int offset, int index) {
             var arrayOfBytes = arrayBuffer.Slice(16 * index + offset, 16 * index + offset + 2);
-            if (BitConverter.IsLittleEndian) {
-                Array.Reverse(arrayOfBytes);
-            }
+            //if (BitConverter.IsLittleEndian) {
+            //    arrayOfBytes = arrayOfBytes.ToArray();
+            //    Array.Reverse(arrayOfBytes);
+            //}
 
             return BitConverter.ToInt16(arrayOfBytes, 0) * 10000.0f * 0.017453292f / 14.285f;
         }
 
         float getMagnetometerFloatWithOffsetFromArrayBufferAtIndex(byte[] arrayBuffer, int offset) {
             var arrayOfBytes = arrayBuffer.Slice(32 + offset, 32 + offset + 2);
-            if (BitConverter.IsLittleEndian) {
-                Array.Reverse(arrayOfBytes);
-            }
+            //if (BitConverter.IsLittleEndian) {
+            //    arrayOfBytes = arrayOfBytes.ToArray();
+            //    Array.Reverse(arrayOfBytes);
+            //}
                 
             return BitConverter.ToInt16(arrayOfBytes, 0) * 0.06f;
         }

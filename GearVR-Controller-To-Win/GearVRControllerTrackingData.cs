@@ -20,5 +20,7 @@ namespace gearvr_controller_to_win
         public int touchpadY = 0;
 
         public float[] quaternion;
+
+        
     }
 }
