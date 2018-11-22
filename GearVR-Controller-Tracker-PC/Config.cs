@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 
-namespace gearvr_controller_to_win
+namespace gearvr_controller_tracker_pc
 {
     [Serializable]
     public class Config

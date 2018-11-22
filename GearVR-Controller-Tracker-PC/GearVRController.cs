@@ -16,7 +16,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 
 using AHRS;
 
-namespace gearvr_controller_to_win
+namespace gearvr_controller_tracker_pc
 {
     class GearVRController : IDisposable
     {

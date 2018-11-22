@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace gearvr_controller_to_win
+namespace gearvr_controller_tracker_pc
 {
     class ControllersTracker: IDisposable
     {

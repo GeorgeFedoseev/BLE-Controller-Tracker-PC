@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{FB253D3D-06B9-4ECE-A2BB-5BDDF788E9DD}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>gearvr_controller_to_win</RootNamespace>
-    <AssemblyName>GearVR-Controller-To-Win</AssemblyName>
+    <RootNamespace>gearvr_controller_tracker_pc</RootNamespace>
+    <AssemblyName>GearVR-Controller-Tracker-PC</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <TargetPlatformVersion>10.0</TargetPlatformVersion>
     <FileAlignment>512</FileAlignment>

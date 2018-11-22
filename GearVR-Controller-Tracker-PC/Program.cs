@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Windows.Devices.Bluetooth;
 
-namespace gearvr_controller_to_win
+namespace gearvr_controller_tracker_pc
 {
     class Program
     {

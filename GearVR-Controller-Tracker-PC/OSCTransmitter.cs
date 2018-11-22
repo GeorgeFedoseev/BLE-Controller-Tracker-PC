@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using SharpOSC;
 using System.Diagnostics;
 
-namespace gearvr_controller_to_win
+namespace gearvr_controller_tracker_pc
 {
     class OSCTransmitter: IDisposable
     {
