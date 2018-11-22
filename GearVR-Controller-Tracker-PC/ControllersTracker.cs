@@ -25,7 +25,8 @@ namespace gearvr_controller_tracker_pc
 
             // connect to all found controllers
             foreach (var addr in foundAddresses) {
-                var c = new GearVRController(foundAddresses[0]);                
+                var c = new GearVRController(addr);
+                Console.WriteLine($"-> Connect Async to {addr}");
                 c.ConnectAsync();
                 _controllers.Add(c);
             }
