@@ -45,6 +45,8 @@ namespace gearvr_controller_tracker_pc
         static float ACCEL_FACTOR     = 0.00001f; // to g (9.81 m/s**2)
         static float TIMESTAMP_FACTOR = 0.001f; // to seconds
 
+        static readonly float GEARVR_HZ = 180f;
+
 
         // MAIN
 
@@ -103,12 +105,14 @@ namespace gearvr_controller_tracker_pc
 
         public GearVRController(ulong bluetoothAddress) {
             _bluetoothAddress = bluetoothAddress;
-        
+
 
             _ahrs = new MadgwickAHRS(
-                samplePeriod: 1/68.84681583453657f, // Madgwick is sensitive to this
+                samplePeriod: 1 / 68.84681583453657f, // Madgwick is sensitive to this
                 beta: 0.352f
             );
+            //_ahrs = new MadgwickAHRS(1f / GEARVR_HZ, 0.01f);
+
 
             // start MonotorThread
             _monitorThread = new Thread(MonitorThreadWorker);
@@ -135,13 +139,13 @@ namespace gearvr_controller_tracker_pc
             while (true) {
 
                 // keep alive
-                if (_connected && (DateTime.Now - _lastTimeRequestedSensorDataFromController).TotalSeconds > KEEP_ALIVE_REQUEST_INTERVAL_SECONDS) {
-                    Console.WriteLine("KEEP ALIVE");
-                    var reqRes = await SendKeepAlive();
-                    Console.WriteLine($"KEEP ALIVE request success {reqRes} {DateTime.Now.ToShortTimeString()}");
+                //if (_connected && (DateTime.Now - _lastTimeRequestedSensorDataFromController).TotalSeconds > KEEP_ALIVE_REQUEST_INTERVAL_SECONDS) {
+                //    //Console.WriteLine("KEEP ALIVE");
+                //    //var reqRes = await SendKeepAlive();
+                //    Console.WriteLine($"ALIVE {DateTime.Now.ToShortTimeString()}");
 
-                    _lastTimeRequestedSensorDataFromController = DateTime.Now;
-                }
+                //    _lastTimeRequestedSensorDataFromController = DateTime.Now;
+                //}
 
                 if (_connected && (DateTime.Now - _lastTimeReceivedDataFromController).TotalSeconds > NO_DATA_CONNECTED_THRESHOLD_SECONDS) {
                     // not receiving data - connection lost
@@ -336,6 +340,7 @@ namespace gearvr_controller_tracker_pc
 
 
             // get service
+            Console.WriteLine("-> Geting controller service...");
             var getServicesResult = _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
             Console.WriteLine($"Get services status: {getServicesResult.Status}");
             var services = getServicesResult.Services;
@@ -348,10 +353,10 @@ namespace gearvr_controller_tracker_pc
                 return false;
             }
 
-            Console.WriteLine("-> Got controller service");
+
 
             // get characteristics
-
+            Console.WriteLine("-> Geting characteristics...");
             var getNotifyCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_NOTIFY_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
             Console.WriteLine($"Getting notify characteristic success: {getNotifyCharacteristicResult.Status}");
 
@@ -383,11 +388,13 @@ namespace gearvr_controller_tracker_pc
                     return false;
                 }
 
+                //var successVRMode = SetVRMode().GetAwaiter().GetResult();
+                //Console.WriteLine($"SetVRMode success: {successVRMode}");
+
                 var success = RequestSensorData().GetAwaiter().GetResult();
                 Console.WriteLine($"RequestSensorData success: {success}");
 
-                //success = SetKeepAlive().GetAwaiter().GetResult();
-                //Console.WriteLine($"KeepAlive success: {success}");
+                
                 
             }
             catch (Exception ex) {
@@ -398,8 +405,10 @@ namespace gearvr_controller_tracker_pc
                 return false;
             }
 
+            Console.WriteLine($"-> Connected to {_bleDevice.BluetoothAddress}");
             _connectionInProgress = false;
             _connected = true;
+            _lastTimeReceivedDataFromController = DateTime.Now;
             return true;
         }
 
@@ -436,6 +445,17 @@ namespace gearvr_controller_tracker_pc
                                                             GattClientCharacteristicConfigurationDescriptorValue.Notify);
         }
 
+        private async Task<bool> SetVRMode()
+        {
+            var writer = new Windows.Storage.Streams.DataWriter();
+            short val = CMD_VR_MODE;
+            writer.WriteInt16(val);
+            GattCommunicationStatus writeResult = await _writeCharacteristic.WriteValueAsync(writer.DetachBuffer());
+
+            bool success = writeResult == GattCommunicationStatus.Success;
+            return success;
+        }
+
         private async Task<bool> RequestSensorData()
         {
             var writer = new Windows.Storage.Streams.DataWriter();
@@ -447,18 +467,19 @@ namespace gearvr_controller_tracker_pc
             return success;
         }
 
-        private async Task<bool> SendKeepAlive()
-        {
-            var writer = new Windows.Storage.Streams.DataWriter();
-            short val = CMD_KEEP_ALIVE;
+        //private async Task<bool> SendKeepAlive()
+        //{
+        //    var writer = new Windows.Storage.Streams.DataWriter();
+        //    //short val = CMD_KEEP_ALIVE;
+        //    short val = CMD_SENSOR;
 
 
-            writer.WriteInt16(val);
-            GattCommunicationStatus writeResult = await _writeCharacteristic.WriteValueAsync(writer.DetachBuffer());
+        //    writer.WriteInt16(val);
+        //    GattCommunicationStatus writeResult = await _writeCharacteristic.WriteValueAsync(writer.DetachBuffer());
 
-            bool success = writeResult == GattCommunicationStatus.Success;
-            return success;
-        }
+        //    bool success = writeResult == GattCommunicationStatus.Success;
+        //    return success;
+        //}
 
         private async Task<bool> SendPowerOff()
         {
@@ -501,7 +522,13 @@ namespace gearvr_controller_tracker_pc
             _lastTimeReceivedDataFromController = DateTime.Now;
             _connected = true;
             //Console.WriteLine($"changed {DateTime.Now}");
-            ParseSensorData(args.CharacteristicValue);
+            try {
+                ParseSensorData(args.CharacteristicValue);
+            }
+            catch (Exception ex) {
+                Console.WriteLine($"Exception while parsing controller sensor data: {ex.Message}");
+            }
+            
         }
 
         public void Dispose()
