@@ -25,6 +25,7 @@ namespace gearvr_controller_tracker_pc
 
         static float SEARCH_TIME_SECONDS = 3;
         static float NO_DATA_CONNECTED_THRESHOLD_SECONDS = 5f;
+        static float KEEP_ALIVE_REQUEST_INTERVAL_SECONDS = 5f;
 
         static Guid UUID_CUSTOM_SERVICE = Guid.Parse("4f63756c-7573-2054-6872-65656d6f7465");
         static Guid UUID_WRITE_CHARACTERISTIC = Guid.Parse("c8c51726-81bc-483b-a052-f7a14ea3d282");
@@ -93,6 +94,7 @@ namespace gearvr_controller_tracker_pc
         private volatile bool _connectionInProgress = false;
 
         private DateTime _lastTimeReceivedDataFromController = DateTime.MinValue;
+        private DateTime _lastTimeRequestedSensorDataFromController = DateTime.MinValue;
 
 
         // MONITOR
@@ -127,10 +129,19 @@ namespace gearvr_controller_tracker_pc
 
         // MONITOR
 
-        void MonitorThreadWorker() {
+        async void MonitorThreadWorker() {
             Console.WriteLine("Monitor thread started");
 
             while (true) {
+
+                // keep alive
+                if (_connected && (DateTime.Now - _lastTimeRequestedSensorDataFromController).TotalSeconds > KEEP_ALIVE_REQUEST_INTERVAL_SECONDS) {
+                    Console.WriteLine("KEEP ALIVE");
+                    var reqRes = await RequestSensorData();
+                    Console.WriteLine($"KEEP ALIVE request success {reqRes} {DateTime.Now.ToShortTimeString()}");
+
+                    _lastTimeRequestedSensorDataFromController = DateTime.Now;
+                }
 
                 if (_connected && (DateTime.Now - _lastTimeReceivedDataFromController).TotalSeconds > NO_DATA_CONNECTED_THRESHOLD_SECONDS) {
                     // not receiving data - connection lost
@@ -363,10 +374,10 @@ namespace gearvr_controller_tracker_pc
                 }
 
                 var success = RequestSensorData().GetAwaiter().GetResult();
-                Console.WriteLine($"Kick Events success: {success}");
+                Console.WriteLine($"RequestSensorData success: {success}");
 
-                success = SetKeepAlive().GetAwaiter().GetResult();
-                Console.WriteLine($"KeepAlive success: {success}");
+                //success = SetKeepAlive().GetAwaiter().GetResult();
+                //Console.WriteLine($"KeepAlive success: {success}");
                 
             }
             catch (Exception ex) {
@@ -420,16 +431,16 @@ namespace gearvr_controller_tracker_pc
             return success;
         }
 
-        private async Task<bool> SetKeepAlive()
-        {
-            var writer = new Windows.Storage.Streams.DataWriter();
-            short val = CMD_KEEP_ALIVE;
-            writer.WriteInt16(val);
-            GattCommunicationStatus writeResult = await _writeCharacteristic.WriteValueAsync(writer.DetachBuffer());
+        //private async Task<bool> SetKeepAlive()
+        //{
+        //    var writer = new Windows.Storage.Streams.DataWriter();
+        //    short val = CMD_KEEP_ALIVE;
+        //    writer.WriteInt16(val);
+        //    GattCommunicationStatus writeResult = await _writeCharacteristic.WriteValueAsync(writer.DetachBuffer());
 
-            bool success = writeResult == GattCommunicationStatus.Success;
-            return success;
-        }
+        //    bool success = writeResult == GattCommunicationStatus.Success;
+        //    return success;
+        //}
 
         private async Task<bool> SendPowerOff()
         {
