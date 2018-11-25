@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
 
-namespace gearvr_controller_tracker_pc
+namespace controller_tracker
 {
     public enum ControllerType {
         GearVRController,
@@ -14,6 +14,9 @@ namespace gearvr_controller_tracker_pc
 
     class BaseController: IDisposable
     {
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+
+
         public Action<GearVRController> OnSensorDataUpdated = (_) => { };
 
 
@@ -84,21 +87,21 @@ namespace gearvr_controller_tracker_pc
 
         // LOG
         protected void Log(string message) {
-            Console.WriteLine($"[{Name}][Log] {message}");
+            logger.Info($"[{Name}] {message}");
         }
 
         protected void LogWarning(string message) {
-            Console.WriteLine($"[{Name}][Warning] {message}");
+            logger.Warn($"[{Name}] {message}");
         }
 
         protected void LogError(string message)
         {
-            Console.WriteLine($"[{Name}][ERROR] {message}");
+            logger.Error($"[{Name}] {message}");
         }
 
         protected void LogException(Exception ex, string message = null)
         {
-            Console.WriteLine($"[{Name}][EXCEPTION] {message ?? ""} {ex.Message}\n{ex.StackTrace}");
+            logger.Error(ex, $"[{Name}] {message}");
         }
 
 

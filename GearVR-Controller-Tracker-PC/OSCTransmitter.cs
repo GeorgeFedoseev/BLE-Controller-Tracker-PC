@@ -8,10 +8,13 @@ using System.Threading.Tasks;
 using SharpOSC;
 using System.Diagnostics;
 
-namespace gearvr_controller_tracker_pc
+namespace controller_tracker
 {
     class OSCTransmitter: IDisposable
     {
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+
+
         private List<BaseController> _controllers = new List<BaseController>();
         private UDPSender _oscClient;
 
@@ -31,7 +34,7 @@ namespace gearvr_controller_tracker_pc
 
             // start transmitting data for new controllers
             foreach (var c in updatedControllers.Where(x => !_controllers.Any(c => x.BluetoothAddress == c.BluetoothAddress))) {
-                Console.WriteLine($"Start transmitting OSC for controller {c.Name}");
+                logger.Info($"Start transmitting OSC for controller {c.Name}");
                 c.OnSensorDataUpdated += (sender) => {
                     TransmitDataForController(sender);
                 };
@@ -55,7 +58,7 @@ namespace gearvr_controller_tracker_pc
                     ));                    
                 }
                 catch (Exception ex) {
-                    Console.WriteLine($"Failed to send OSC: {ex.Message}");
+                    logger.Info($"Failed to send OSC: {ex.Message}");
                 }
 
                 _lastTimeSent = DateTime.Now;

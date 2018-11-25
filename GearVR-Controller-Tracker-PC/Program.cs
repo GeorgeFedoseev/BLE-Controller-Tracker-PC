@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Windows.Devices.Bluetooth;
 
-namespace gearvr_controller_tracker_pc
+namespace controller_tracker
 {
     class Program
     {
@@ -35,6 +35,11 @@ namespace gearvr_controller_tracker_pc
 
         static void Main(string[] args)
         {
+            // print header and app version
+            logger.Info("/////////////////////////////////////////");
+            logger.Info("////////////// Controller-Tracker v{0} {1}", Application.ProductVersion, Environment.Is64BitProcess ? "x64" : "x86");
+            logger.Info("/////////////////////////////////////////");
+
             _handler += new EventHandler(ConsoleExitHandler);
             SetConsoleCtrlHandler(_handler, true);
 
@@ -69,7 +74,8 @@ namespace gearvr_controller_tracker_pc
             _tracker.Dispose();
 
             logger.Info("Cleanup complete");
-            
+
+            logger.Info("APP CLOSED");
 
             //shutdown right away so there are no lingering threads
             Environment.Exit(-1);

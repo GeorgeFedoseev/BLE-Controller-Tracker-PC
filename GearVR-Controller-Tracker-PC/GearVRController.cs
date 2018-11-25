@@ -16,11 +16,12 @@ using System.Runtime.InteropServices.WindowsRuntime;
 
 using AHRS;
 
-namespace gearvr_controller_tracker_pc
+namespace controller_tracker
 {
     class GearVRController : BaseController
     {
-        
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+
         static float NO_DATA_CONNECTED_THRESHOLD_SECONDS = 5f;
         static float KEEP_ALIVE_REQUEST_INTERVAL_SECONDS = 5f;
 
@@ -430,7 +431,7 @@ namespace gearvr_controller_tracker_pc
                     _connectedDateTime = DateTime.Now;
                     break;
                 case BluetoothConnectionStatus.Disconnected:
-                    Log($"-> Disconnected from {Name}");
+                    LogWarning($"-> Disconnected from {Name}");
                     Log($"Connection lasted: {(DateTime.Now - _connectedDateTime).ToString()}");
                     break;
             }
@@ -452,7 +453,7 @@ namespace gearvr_controller_tracker_pc
                 ParseSensorData(args.CharacteristicValue);
             }
             catch (Exception ex) {
-                Log($"Exception while parsing controller sensor data: {ex.Message}");
+                LogException(ex, $"Exception while parsing controller sensor data");
             }
             
         }

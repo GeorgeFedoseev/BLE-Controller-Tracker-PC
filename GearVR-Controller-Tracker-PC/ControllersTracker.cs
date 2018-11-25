@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth.Advertisement;
 
-namespace gearvr_controller_tracker_pc
+namespace controller_tracker
 {
     class ControllersTracker : IDisposable
     {
