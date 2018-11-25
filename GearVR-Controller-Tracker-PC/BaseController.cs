@@ -82,6 +82,25 @@ namespace gearvr_controller_tracker_pc
 
         }
 
+        // LOG
+        protected void Log(string message) {
+            Console.WriteLine($"[{Name}][Log] {message}");
+        }
+
+        protected void LogWarning(string message) {
+            Console.WriteLine($"[{Name}][Warning] {message}");
+        }
+
+        protected void LogError(string message)
+        {
+            Console.WriteLine($"[{Name}][ERROR] {message}");
+        }
+
+        protected void LogException(Exception ex)
+        {
+            Console.WriteLine($"[{Name}][EXCEPTION] {ex.Message}\n{ex.StackTrace}");
+        }
+
 
 
         public virtual void Dispose()

@@ -224,21 +224,21 @@ namespace gearvr_controller_tracker_pc
             base._Connect();
 
             if (_connectionInProgress) {
-                Console.WriteLine("Cant start connecting - connection already in progress");
+                Console.WriteLine($"[{Name}] Cant start connecting - connection already in progress");
                 return false;
             }
 
             _connectionInProgress = true;
 
-            Console.WriteLine("-> Try to connect untill success");
+            Console.WriteLine($"[{Name}] Try to connect untill success");
             // untill reach
             while (true) {
-                Console.WriteLine($"Trying to connect to {_bluetoothAddress}...");
+                Console.WriteLine($"[{Name}] Trying to connect...");
                 
                 var res = TryToConnect();
 
                 if (res) {
-                    Console.WriteLine("break");
+                    //Console.WriteLine("break");
                     break;
                 }
 
@@ -251,40 +251,40 @@ namespace gearvr_controller_tracker_pc
             //Console.WriteLine($"Device connection status: {_bleDevice.ConnectionStatus}");
 
             // unpair
-            Console.WriteLine($"Unpairing {_bleDevice.BluetoothAddress}");
+            Console.WriteLine($"[{Name}] Unpairing {_bleDevice.BluetoothAddress}");
             var deviceUnpairingRes =_bleDevice.DeviceInformation.Pairing.UnpairAsync().AsTask().GetAwaiter().GetResult();
-            Console.WriteLine($"Device unpairing result: {deviceUnpairingRes.Status}");
+            Console.WriteLine($"[{Name}] Device unpairing result: {deviceUnpairingRes.Status}");
 
             //Console.WriteLine($"_bleDevice.DeviceInformation.Pairing.IsPaired: {_bleDevice.DeviceInformation.Pairing.IsPaired}");
             
 
             // pair
-            Console.WriteLine("Attempt pairing...");
+            Console.WriteLine($"[{Name}] Attempt pairing...");
             var pairRes = PairAsync().GetAwaiter().GetResult();
-            Console.WriteLine($"Pairing result: {pairRes.Status}");
+            Console.WriteLine($"[{Name}] Pairing result: {pairRes.Status}");
 
 
             // get service
-            Console.WriteLine("-> Geting controller service...");
+            Console.WriteLine($"[{Name}] Geting controller service...");
             var getServicesResult = _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            Console.WriteLine($"Get services status: {getServicesResult.Status}");
+            Console.WriteLine($"[{Name}] Get services status: {getServicesResult.Status}");
             var services = getServicesResult.Services;
             
             var controllerService = services.Where(x => x.Uuid == UUID_CUSTOM_SERVICE).FirstOrDefault();
             
             if (controllerService == null) {
-                Console.WriteLine("-> Controller service is NULL");
+                Console.WriteLine($"[{Name}] Controller service is NULL");
                 _connectionInProgress = false;
                 return false;
             }
 
             // get characteristics
-            Console.WriteLine("-> Geting characteristics...");
+            Console.WriteLine($"[{Name}] Geting characteristics...");
             var getNotifyCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_NOTIFY_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            Console.WriteLine($"Getting notify characteristic success: {getNotifyCharacteristicResult.Status}");
+            Console.WriteLine($"[{Name}] Getting notify characteristic success: {getNotifyCharacteristicResult.Status}");
 
             var getWriteCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_WRITE_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            Console.WriteLine($"Getting write characteristic success: {getWriteCharacteristicResult.Status}");
+            Console.WriteLine($"[{Name}] Getting write characteristic success: {getWriteCharacteristicResult.Status}");
 
             if (getWriteCharacteristicResult.Status != GattCommunicationStatus.Success
                 || getNotifyCharacteristicResult.Status != GattCommunicationStatus.Success) 
@@ -306,7 +306,7 @@ namespace gearvr_controller_tracker_pc
                 }
                 else {
                     
-                    Console.WriteLine($"Failed to subscribe to characteristic: {result}");
+                    Console.WriteLine($"[{Name}] Failed to subscribe to characteristic: {result}");
                     _connectionInProgress = false;
                     return false;
                 }
@@ -314,18 +314,18 @@ namespace gearvr_controller_tracker_pc
                 
 
                 var successVRMode = SendVRModeCommand().GetAwaiter().GetResult();
-                Console.WriteLine($"SetVRMode success: {successVRMode}");
+                Console.WriteLine($"[{Name}] SetVRMode success: {successVRMode}");
 
                 Thread.Sleep(1000);
 
 
                 var success = SendSensorCommand().GetAwaiter().GetResult();
-                Console.WriteLine($"RequestSensorData success: {success}");                
+                Console.WriteLine($"[{Name}] RequestSensorData success: {success}");                
             }
             catch (Exception ex) {
                 // This usually happens when not all characteristics are found
                 // or selected characteristic has no Notify.
-                Console.WriteLine($"Subscribing Exception: {ex.Message}");
+                Console.WriteLine($"[{Name}] Subscribing Exception: {ex.Message}");
                 _connectionInProgress = false;
                 return false;
             }
@@ -350,7 +350,7 @@ namespace gearvr_controller_tracker_pc
             ClearBLEDevice();
 
 
-            Console.WriteLine("Trying to get GATT services...");
+            Console.WriteLine($"[{Name}] Trying to get GATT services...");
             //return  _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
             _bleDevice = BluetoothLEDevice.FromBluetoothAddressAsync(_bluetoothAddress).AsTask().GetAwaiter().GetResult();
             _bleDevice.ConnectionStatusChanged += _connectionStatusChanged;
@@ -358,11 +358,11 @@ namespace gearvr_controller_tracker_pc
             if (_bleDevice == null) {
                 return false;
             }
-            Console.WriteLine("Got BLE device");
+            Console.WriteLine($"[{Name}] Got BLE device");
 
             var res = _bleDevice.GetGattServicesForUuidAsync(UUID_CUSTOM_SERVICE, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
 
-            Console.WriteLine("Got services");
+            Console.WriteLine($"[{Name}] Got services");
 
             return true;
         }
@@ -439,6 +439,9 @@ namespace gearvr_controller_tracker_pc
 
             _connected = false;
         }
+
+
+        
 
 
         // EVENTS
