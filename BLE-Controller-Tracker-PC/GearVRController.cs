@@ -104,8 +104,8 @@ namespace controller_tracker
                     _Connect();
                 }
 
-                if (_connected && (DateTime.Now - _lastTimeReceivedDataFromController).TotalSeconds > 0.1
-                                && (DateTime.Now - _lastTimeKickstarted).TotalSeconds > 1) {
+                if (_connected && (DateTime.Now - _lastTimeReceivedDataFromController).TotalSeconds > 0.2
+                                && (DateTime.Now - _lastTimeKickstarted).TotalSeconds > 3) {
                     KickstartReceiving();
                 }
             }
@@ -240,12 +240,17 @@ namespace controller_tracker
                 while (true) {
                     Log($"Trying to connect...");
 
-                    var res = TryToConnect();
+                    try {
+                        var res = TryToConnect();
 
-                    if (res) {
-                        //Log("break");
-                        break;
+                        if (res) {
+                            //Log("break");
+                            break;
+                        }
+                    }catch(Exception ex) {
+                        LogException(ex, "Exception while trying to connect");
                     }
+                    
 
                     Thread.Sleep(500);
                 }
