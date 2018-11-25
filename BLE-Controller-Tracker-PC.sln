@@ -1,9 +1,9 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28010.2046
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GearVR-Controller-Tracker-PC", "GearVR-Controller-Tracker-PC\GearVR-Controller-Tracker-PC.csproj", "{FB253D3D-06B9-4ECE-A2BB-5BDDF788E9DD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BLE-Controller-Tracker-PC", "BLE-Controller-Tracker-PC\BLE-Controller-Tracker-PC.csproj", "{FB253D3D-06B9-4ECE-A2BB-5BDDF788E9DD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

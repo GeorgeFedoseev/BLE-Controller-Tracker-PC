@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -37,7 +38,7 @@ namespace controller_tracker
         {
             // print header and app version
             logger.Info("/////////////////////////////////////////");
-            logger.Info("////////////// Controller-Tracker v{0} {1}", Application.ProductVersion, Environment.Is64BitProcess ? "x64" : "x86");
+            logger.Info($"////////////// {Assembly.GetCallingAssembly().GetName().Name} v{Application.ProductVersion} {(Environment.Is64BitProcess ? "x64" : "x86")}");
             logger.Info("/////////////////////////////////////////");
 
             _handler += new EventHandler(ConsoleExitHandler);
