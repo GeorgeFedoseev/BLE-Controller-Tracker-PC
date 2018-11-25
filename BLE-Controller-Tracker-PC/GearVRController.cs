@@ -66,7 +66,7 @@ namespace controller_tracker
 
         // CONTROL bools
         private DateTime _lastTimeReceivedDataFromController = DateTime.MinValue;
-        private DateTime _lastTimeRequestedSensorDataFromController = DateTime.MinValue;
+        private DateTime _lastTimeKickstarted = DateTime.MinValue;
 
 
         // MONITOR
@@ -102,6 +102,11 @@ namespace controller_tracker
             while (true) {
                 if (!_connected && _wantToConnect & !_connectionInProgress) {
                     _Connect();
+                }
+
+                if (_connected && (DateTime.Now - _lastTimeReceivedDataFromController).TotalSeconds > 0.1
+                                && (DateTime.Now - _lastTimeKickstarted).TotalSeconds > 1) {
+                    KickstartReceiving();
                 }
             }
         }
@@ -210,7 +215,7 @@ namespace controller_tracker
 
             lock (ControllersTracker.BLEConnectionLock) {
 
-                Thread.Sleep(1000);
+                //Thread.Sleep(1000);
 
                 base._Connect();
 
@@ -315,16 +320,9 @@ namespace controller_tracker
                     }
 
 
-                    Thread.Sleep(2000);
+                    KickstartReceiving();
 
-                    var successVRMode = SendVRModeCommand().GetAwaiter().GetResult();
-                    Log($"SetVRMode success: {successVRMode}");
-
-                    Thread.Sleep(2000);
-
-
-                    var success = SendSensorCommand().GetAwaiter().GetResult();
-                    Log($"RequestSensorData success: {success}");
+                    
                 }
                 catch (Exception ex) {
                     // This usually happens when not all characteristics are found
@@ -372,6 +370,31 @@ namespace controller_tracker
             Log($"Got services");
 
             return true;
+        }
+
+        private void KickstartReceiving() {
+            if (_writeCharacteristic != null) {
+                Log("KickstartReceiving...");
+
+                try {
+                    Thread.Sleep(800);
+
+                    var successVRMode = SendVRModeCommand().GetAwaiter().GetResult();
+                    Log($"SetVRMode success: {successVRMode}");
+
+                    Thread.Sleep(800);
+
+
+                    var success = SendSensorCommand().GetAwaiter().GetResult();
+                    Log($"RequestSensorData success: {success}");
+                }
+                catch {
+                    LogError("Failed to kickstart - exception");
+                }
+                
+            }
+
+            _lastTimeKickstarted = DateTime.Now;
         }
 
         // COMANDS FOR GearVR Controller
