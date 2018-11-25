@@ -52,7 +52,11 @@ namespace controller_tracker
         }
         
         protected volatile bool _connectionInProgress = false;
-
+        public bool IsConnecting {
+            get {
+                return _connectionInProgress;
+            }
+        }
 
         // DATA
         protected GearVRControllerTrackingData _latestTrackingData = new GearVRControllerTrackingData();

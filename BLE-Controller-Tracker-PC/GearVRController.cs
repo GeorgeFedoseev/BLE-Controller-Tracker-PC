@@ -75,6 +75,7 @@ namespace controller_tracker
 
         public GearVRController(ulong bluetoothAddress) {
             _bluetoothAddress = bluetoothAddress;
+            
 
 
             _ahrs = new MadgwickAHRS(
@@ -107,6 +108,7 @@ namespace controller_tracker
 
 
         // VALUES PARSING
+
         void ParseSensorData(IBuffer characteristicValue) {
             
 
@@ -205,121 +207,148 @@ namespace controller_tracker
         // CONNECTION
 
         protected override bool _Connect() {
-            base._Connect();
 
-            if (_connectionInProgress) {
-                Log($"Cant start connecting - connection already in progress");
-                return false;
-            }
-            _connectionInProgress = true;
+            lock (ControllersTracker.BLEConnectionLock) {
 
-            Log($"Try to connect untill success");
-            // untill reach
-            while (true) {
-                Log($"Trying to connect...");
-                
-                var res = TryToConnect();
+                Thread.Sleep(1000);
 
-                if (res) {
-                    //Log("break");
-                    break;
+                base._Connect();
+
+                //if (ControllersTracker.sharedInstance().IsAnyConnecting) {
+                //    // wait others to finish
+                //    while (ControllersTracker.sharedInstance().IsAnyConnecting) {
+                //        Log("wait others to finish conencting...");
+                //        Thread.Sleep(100);
+                //    }
+                //}
+
+                Log("_Connect");
+
+                if (_connectionInProgress) {
+                    Log($"Cant start connecting - connection already in progress");
+                    return false;
+                }
+                _connectionInProgress = true;
+
+                Log($"Try to connect untill success");
+                // untill reach
+                while (true) {
+                    Log($"Trying to connect...");
+
+                    var res = TryToConnect();
+
+                    if (res) {
+                        //Log("break");
+                        break;
+                    }
+
+                    Thread.Sleep(500);
                 }
 
-                Thread.Sleep(500);
-            }
-            
-            // unpair
-            Log($"Unpairing {_bleDevice.BluetoothAddress}");
-            var deviceUnpairingRes =_bleDevice.DeviceInformation.Pairing.UnpairAsync().AsTask().GetAwaiter().GetResult();
-            Log($"Device unpairing result: {deviceUnpairingRes.Status}");
+                //// unpair
+                //Log($"Unpairing {_bleDevice.BluetoothAddress}");
+                //var deviceUnpairingRes =_bleDevice.DeviceInformation.Pairing.UnpairAsync().AsTask().GetAwaiter().GetResult();
+                //Log($"Device unpairing result: {deviceUnpairingRes.Status}");
 
-            //Log($"_bleDevice.DeviceInformation.Pairing.IsPaired: {_bleDevice.DeviceInformation.Pairing.IsPaired}");
-            
-
-            // pair
-            Log($"Attempt pairing...");
-            var pairRes = PairAsync().GetAwaiter().GetResult();
-            Log($"Pairing result: {pairRes.Status}");
+                ////Log($"_bleDevice.DeviceInformation.Pairing.IsPaired: {_bleDevice.DeviceInformation.Pairing.IsPaired}");
 
 
-            // get service
-            Log($"Geting controller service...");
-            var getServicesResult = _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            Log($"Get services status: {getServicesResult.Status}");
-            var services = getServicesResult.Services;
-            
-            var controllerService = services.Where(x => x.Uuid == UUID_CUSTOM_SERVICE).FirstOrDefault();
-            
-            if (controllerService == null) {
-                LogWarning($"Controller service is NULL");
-                _connectionInProgress = false;
-                return false;
-            }
+                //// pair
+                //Log($"Attempt pairing...");
+                //var pairRes = PairAsync().GetAwaiter().GetResult();
+                //Log($"PairingResult Protection Level Used: {pairRes.ProtectionLevelUsed}");
+                //if (pairRes.Status == DevicePairingResultStatus.AlreadyPaired || pairRes.Status == DevicePairingResultStatus.Paired) {
+                //    Log($"Pairing result: {pairRes.Status}");
+                //}
+                //else {
+                //    LogError($"Pairing result: {pairRes.Status} - Connection failed");
+                //    _connectionInProgress = false;
+                //    return false;                
+                //}
 
-            // get characteristics
-            Log($"Geting characteristics...");
-            var getNotifyCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_NOTIFY_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            Log($"Getting notify characteristic success: {getNotifyCharacteristicResult.Status}");
 
-            var getWriteCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_WRITE_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            Log($"Getting write characteristic success: {getWriteCharacteristicResult.Status}");
+                // get service
+                Log($"Geting controller service...");
+                var getServicesResult = _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
+                Log($"Get services status: {getServicesResult.Status}");
+                var services = getServicesResult.Services;
 
-            if (getWriteCharacteristicResult.Status != GattCommunicationStatus.Success
-                || getNotifyCharacteristicResult.Status != GattCommunicationStatus.Success) 
-            {
-                _connectionInProgress = false;
-                return false;
-            }
+                var controllerService = services.Where(x => x.Uuid == UUID_CUSTOM_SERVICE).FirstOrDefault();
 
-            _notifyCharacteristic = getNotifyCharacteristicResult.Characteristics.First();
-            _writeCharacteristic = getWriteCharacteristicResult.Characteristics.First();
-             
-            
-            try {
-                // Write the ClientCharacteristicConfigurationDescriptor in order for server to send notifications.               
-                var result = SubscribeToCharacteristic().GetAwaiter().GetResult();
-                if (result == GattCommunicationStatus.Success) {
-                    _notifyCharacteristic.ValueChanged += _notifyCharacteristic_ValueChanged;
-                    
-                }
-                else {
-                    
-                    Log($"Failed to subscribe to characteristic: {result}");
+                if (controllerService == null) {
+                    LogError($"Controller service is NULL - Connection failed");
                     _connectionInProgress = false;
                     return false;
                 }
 
-                
+                // get characteristics
+                Log($"Geting characteristics...");
+                var getNotifyCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_NOTIFY_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
+                Log($"Getting notify characteristic success: {getNotifyCharacteristicResult.Status}");
 
-                var successVRMode = SendVRModeCommand().GetAwaiter().GetResult();
-                Log($"SetVRMode success: {successVRMode}");
+                var getWriteCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_WRITE_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
+                Log($"Getting write characteristic success: {getWriteCharacteristicResult.Status}");
 
-                Thread.Sleep(1000);
+                if (getWriteCharacteristicResult.Status != GattCommunicationStatus.Success
+                    || getNotifyCharacteristicResult.Status != GattCommunicationStatus.Success) {
+                    LogError("Failed to get both characteristics - Connection failed");
+                    _connectionInProgress = false;
+                    return false;
+                }
+
+                _notifyCharacteristic = getNotifyCharacteristicResult.Characteristics.First();
+                _writeCharacteristic = getWriteCharacteristicResult.Characteristics.First();
 
 
-                var success = SendSensorCommand().GetAwaiter().GetResult();
-                Log($"RequestSensorData success: {success}");                
-            }
-            catch (Exception ex) {
-                // This usually happens when not all characteristics are found
-                // or selected characteristic has no Notify.
-                LogException(ex, "Failed to subscribe to GearVR data");
+                try {
+                    // Write the ClientCharacteristicConfigurationDescriptor in order for server to send notifications.               
+                    var result = SubscribeToCharacteristic().GetAwaiter().GetResult();
+                    if (result == GattCommunicationStatus.Success) {
+                        _notifyCharacteristic.ValueChanged += _notifyCharacteristic_ValueChanged;
+
+                    }
+                    else {
+
+                        LogError($"Failed to subscribe to characteristic: {result}");
+                        _connectionInProgress = false;
+                        return false;
+                    }
+
+
+                    Thread.Sleep(2000);
+
+                    var successVRMode = SendVRModeCommand().GetAwaiter().GetResult();
+                    Log($"SetVRMode success: {successVRMode}");
+
+                    Thread.Sleep(2000);
+
+
+                    var success = SendSensorCommand().GetAwaiter().GetResult();
+                    Log($"RequestSensorData success: {success}");
+                }
+                catch (Exception ex) {
+                    // This usually happens when not all characteristics are found
+                    // or selected characteristic has no Notify.
+                    LogException(ex, "Failed to subscribe to GearVR data");
+                    _connectionInProgress = false;
+                    return false;
+                }
+
+                Log($"-> Connected.");
                 _connectionInProgress = false;
-                return false;
-            }
+                _connected = true;
+                _lastTimeReceivedDataFromController = DateTime.Now;
+                return true;
 
-            Log($"-> Connected to {Name}");
-            _connectionInProgress = false;
-            _connected = true;
-            _lastTimeReceivedDataFromController = DateTime.Now;
-            return true;
+            }
+            
         }
 
         private async Task<DevicePairingResult> PairAsync() {
             _bleDevice.DeviceInformation.Pairing.Custom.PairingRequested += (s, args) => {
                 args.Accept();
             };
-            return await _bleDevice.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly, DevicePairingProtectionLevel.None);
+            return await _bleDevice.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly | DevicePairingKinds.None, DevicePairingProtectionLevel.None);
         }
         
         // ping to BLE device
@@ -433,15 +462,16 @@ namespace controller_tracker
                 case BluetoothConnectionStatus.Disconnected:
                     LogWarning($"-> Disconnected from {Name}");
                     Log($"Connection lasted: {(DateTime.Now - _connectedDateTime).ToString()}");
+                    
                     break;
             }
 
 
             if (!_connectionInProgress && _connected && bluetoothLEDevice.ConnectionStatus == BluetoothConnectionStatus.Disconnected) {
-                _connected = false;
+                _Disconnect();
             }
 
-            
+
         }
 
         private void _notifyCharacteristic_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)

@@ -11,6 +11,13 @@ namespace controller_tracker
 {
     class ControllersTracker : IDisposable
     {
+        public static object BLEConnectionLock = new object();
+
+        private static ControllersTracker _instance;
+        public static ControllersTracker sharedInstance() {
+            return _instance;
+        }
+
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
 
@@ -20,6 +27,16 @@ namespace controller_tracker
         private OSCTransmitter _transmitter;
 
         private Thread _controllersSearchingThread;
+
+        //public bool IsAnyConnecting {
+        //    get {
+        //        return _discoveredControllers.Any(c => c.IsConnecting);
+        //    }
+        //}
+
+        public ControllersTracker() {
+            _instance = this;
+        }
 
         public void Run() {
             
@@ -49,32 +66,39 @@ namespace controller_tracker
         }
 
         void FindControllersWorker(){
-            var foundUnpairedControllerAddresses = FindUnpairedControllersAddresses();
-            foreach (var nameAddressTuple in foundUnpairedControllerAddresses) {
-                var deviceName = nameAddressTuple.Item1;
-                var bluetoothAddress = nameAddressTuple.Item2;
 
-                if (_discoveredControllers.Any(c => c.BluetoothAddress == nameAddressTuple.Item2)) {
-                    // we already know about this controller
-                    logger.Info($"Found {deviceName} - Already added before");
-                    continue;
+            while (true) {
+                var foundUnpairedControllerAddresses = FindUnpairedControllersAddresses();
+                foreach (var nameAddressTuple in foundUnpairedControllerAddresses) {
+                    var deviceName = nameAddressTuple.Item1;
+                    var bluetoothAddress = nameAddressTuple.Item2;
+
+                    if (_discoveredControllers.Any(c => c.BluetoothAddress == nameAddressTuple.Item2)) {
+                        // we already know about this controller
+                        //logger.Info($"Found {deviceName} - Already added before");
+                        continue;
+                    }
+
+                    logger.Info($"Found {deviceName} - NEW");
+
+                    if (deviceName.Contains("Gear VR Controller")) {
+
+                        
+
+
+                        // create and add new gear vr controller
+                        var gearVRController = new GearVRController(bluetoothAddress);
+                        gearVRController.Initialize();                        
+
+                        _discoveredControllers.Add(gearVRController);
+
+                        OnNewControllerAdded(gearVRController);
+                    }
+                    // TODO: elseif Daydream
+                    
                 }
-
-                logger.Info($"Found {deviceName} - NEW");
-
-                if (deviceName.Contains("Gear VR Controller")) {
-                    // create and add new gear vr controller
-                    var gearVRController = new GearVRController(bluetoothAddress);
-                    gearVRController.Initialize();
-                    _discoveredControllers.Add(gearVRController);
-
-                    OnNewControllerAdded(gearVRController);
-                }
-                // TODO: elseif Daydream
-
-
-
             }
+            
         }
 
         public static List<Tuple<string, ulong>> FindUnpairedControllersAddresses(List<string> acceptNames = null)
