@@ -95,25 +95,9 @@ namespace gearvr_controller_tracker_pc
         // MONITOR
 
         async void MonitorThreadWorker() {
-            Console.WriteLine("Monitor thread started");
+            Log("Monitor thread started");
 
             while (true) {
-
-                // keep alive
-                //if (_connected && (DateTime.Now - _lastTimeRequestedSensorDataFromController).TotalSeconds > KEEP_ALIVE_REQUEST_INTERVAL_SECONDS) {
-                //    //Console.WriteLine("KEEP ALIVE");
-                //    //var reqRes = await SendKeepAlive();
-                //    Console.WriteLine($"CONNECTION IS ALIVE {DateTime.Now.ToShortTimeString()}");
-
-                //    _lastTimeRequestedSensorDataFromController = DateTime.Now;
-                //}
-
-                //if (_connected && (DateTime.Now - _lastTimeReceivedDataFromController).TotalSeconds > NO_DATA_CONNECTED_THRESHOLD_SECONDS) {
-                //    // not receiving data - connection lost
-                //    Console.WriteLine($"Didn't receive data for {NO_DATA_CONNECTED_THRESHOLD_SECONDS} seconds - disconnected");
-                //    _Disconnect();
-                //}
-
                 if (!_connected && _wantToConnect & !_connectionInProgress) {
                     _Connect();
                 }
@@ -165,7 +149,6 @@ namespace gearvr_controller_tracker_pc
                 accelerometer[2]
                 );
 
-
             // change quaternion format to Unity one
             _latestTrackingData.quaternion = new float[] {
                 -_ahrs.Quaternion[1],
@@ -196,11 +179,11 @@ namespace gearvr_controller_tracker_pc
 
             var temperature = eventData[57];
 
-            //Console.WriteLine($"Touchpad: ({trackingData.touchpadX}, {trackingData.touchpadY})");
+            //Log($"Touchpad: ({trackingData.touchpadX}, {trackingData.touchpadY})");
 
 
             OnSensorDataUpdated(this);
-            //Console.WriteLine($"trigger: {triggerButton}, home: {homeButton}, back: {backButton}, Q: {string.Join(", ", _ahrs.Quaternion)}");
+            //Log($"trigger: {triggerButton}, home: {homeButton}, back: {backButton}, Q: {string.Join(", ", _ahrs.Quaternion)}");
         }
 
         float getAccelerometerFloatWithOffsetFromArrayBufferAtIndex(byte[] arrayBuffer, int offset, int index) {             
@@ -224,67 +207,61 @@ namespace gearvr_controller_tracker_pc
             base._Connect();
 
             if (_connectionInProgress) {
-                Console.WriteLine($"[{Name}] Cant start connecting - connection already in progress");
+                Log($"Cant start connecting - connection already in progress");
                 return false;
             }
-
             _connectionInProgress = true;
 
-            Console.WriteLine($"[{Name}] Try to connect untill success");
+            Log($"Try to connect untill success");
             // untill reach
             while (true) {
-                Console.WriteLine($"[{Name}] Trying to connect...");
+                Log($"Trying to connect...");
                 
                 var res = TryToConnect();
 
                 if (res) {
-                    //Console.WriteLine("break");
+                    //Log("break");
                     break;
                 }
 
                 Thread.Sleep(500);
             }
-
-            //Console.WriteLine("-> Connected");
             
-
-            //Console.WriteLine($"Device connection status: {_bleDevice.ConnectionStatus}");
-
             // unpair
-            Console.WriteLine($"[{Name}] Unpairing {_bleDevice.BluetoothAddress}");
+            Log($"Unpairing {_bleDevice.BluetoothAddress}");
             var deviceUnpairingRes =_bleDevice.DeviceInformation.Pairing.UnpairAsync().AsTask().GetAwaiter().GetResult();
-            Console.WriteLine($"[{Name}] Device unpairing result: {deviceUnpairingRes.Status}");
+            Log($"Device unpairing result: {deviceUnpairingRes.Status}");
 
-            //Console.WriteLine($"_bleDevice.DeviceInformation.Pairing.IsPaired: {_bleDevice.DeviceInformation.Pairing.IsPaired}");
+            //Log($"_bleDevice.DeviceInformation.Pairing.IsPaired: {_bleDevice.DeviceInformation.Pairing.IsPaired}");
             
 
             // pair
-            Console.WriteLine($"[{Name}] Attempt pairing...");
+            Log($"Attempt pairing...");
             var pairRes = PairAsync().GetAwaiter().GetResult();
-            Console.WriteLine($"[{Name}] Pairing result: {pairRes.Status}");
+            Log($"Pairing result: {pairRes.Status}");
 
 
             // get service
-            Console.WriteLine($"[{Name}] Geting controller service...");
+            Log($"Geting controller service...");
             var getServicesResult = _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            Console.WriteLine($"[{Name}] Get services status: {getServicesResult.Status}");
+            Log($"Get services status: {getServicesResult.Status}");
             var services = getServicesResult.Services;
             
             var controllerService = services.Where(x => x.Uuid == UUID_CUSTOM_SERVICE).FirstOrDefault();
             
             if (controllerService == null) {
-                Console.WriteLine($"[{Name}] Controller service is NULL");
+                LogWarning($"Controller service is NULL");
                 _connectionInProgress = false;
                 return false;
             }
 
             // get characteristics
-            Console.WriteLine($"[{Name}] Geting characteristics...");
+            Log($"Geting characteristics...");
             var getNotifyCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_NOTIFY_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            Console.WriteLine($"[{Name}] Getting notify characteristic success: {getNotifyCharacteristicResult.Status}");
+            Log($"Getting notify characteristic success: {getNotifyCharacteristicResult.Status}");
 
             var getWriteCharacteristicResult = controllerService.GetCharacteristicsForUuidAsync(UUID_WRITE_CHARACTERISTIC, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
-            Console.WriteLine($"[{Name}] Getting write characteristic success: {getWriteCharacteristicResult.Status}");
+            Log($"Getting write characteristic success: {getWriteCharacteristicResult.Status}");
 
             if (getWriteCharacteristicResult.Status != GattCommunicationStatus.Success
                 || getNotifyCharacteristicResult.Status != GattCommunicationStatus.Success) 
@@ -306,7 +283,7 @@ namespace gearvr_controller_tracker_pc
                 }
                 else {
                     
-                    Console.WriteLine($"[{Name}] Failed to subscribe to characteristic: {result}");
+                    Log($"Failed to subscribe to characteristic: {result}");
                     _connectionInProgress = false;
                     return false;
                 }
@@ -314,23 +291,23 @@ namespace gearvr_controller_tracker_pc
                 
 
                 var successVRMode = SendVRModeCommand().GetAwaiter().GetResult();
-                Console.WriteLine($"[{Name}] SetVRMode success: {successVRMode}");
+                Log($"SetVRMode success: {successVRMode}");
 
                 Thread.Sleep(1000);
 
 
                 var success = SendSensorCommand().GetAwaiter().GetResult();
-                Console.WriteLine($"[{Name}] RequestSensorData success: {success}");                
+                Log($"RequestSensorData success: {success}");                
             }
             catch (Exception ex) {
                 // This usually happens when not all characteristics are found
                 // or selected characteristic has no Notify.
-                Console.WriteLine($"[{Name}] Subscribing Exception: {ex.Message}");
+                LogException(ex, "Failed to subscribe to GearVR data");
                 _connectionInProgress = false;
                 return false;
             }
 
-            Console.WriteLine($"-> Connected to {Name}");
+            Log($"-> Connected to {Name}");
             _connectionInProgress = false;
             _connected = true;
             _lastTimeReceivedDataFromController = DateTime.Now;
@@ -350,7 +327,7 @@ namespace gearvr_controller_tracker_pc
             ClearBLEDevice();
 
 
-            Console.WriteLine($"[{Name}] Trying to get GATT services...");
+            Log($"Trying to get GATT services...");
             //return  _bleDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
             _bleDevice = BluetoothLEDevice.FromBluetoothAddressAsync(_bluetoothAddress).AsTask().GetAwaiter().GetResult();
             _bleDevice.ConnectionStatusChanged += _connectionStatusChanged;
@@ -358,11 +335,11 @@ namespace gearvr_controller_tracker_pc
             if (_bleDevice == null) {
                 return false;
             }
-            Console.WriteLine($"[{Name}] Got BLE device");
+            Log($"Got BLE device");
 
             var res = _bleDevice.GetGattServicesForUuidAsync(UUID_CUSTOM_SERVICE, BluetoothCacheMode.Uncached).AsTask().GetAwaiter().GetResult();
 
-            Console.WriteLine($"[{Name}] Got services");
+            Log($"Got services");
 
             return true;
         }
@@ -446,15 +423,15 @@ namespace gearvr_controller_tracker_pc
 
         // EVENTS
         private void _connectionStatusChanged(BluetoothLEDevice bluetoothLEDevice, object e) {
-            Console.WriteLine($"Connection status changed to {bluetoothLEDevice.ConnectionStatus}");
+            Log($"Connection status changed to {bluetoothLEDevice.ConnectionStatus}");
 
             switch (bluetoothLEDevice.ConnectionStatus) {
                 case BluetoothConnectionStatus.Connected:
                     _connectedDateTime = DateTime.Now;
                     break;
                 case BluetoothConnectionStatus.Disconnected:
-                    Console.WriteLine($"-> Disconnected from {Name}");
-                    Console.WriteLine($"Connection lasted: {(DateTime.Now - _connectedDateTime).ToString()}");
+                    Log($"-> Disconnected from {Name}");
+                    Log($"Connection lasted: {(DateTime.Now - _connectedDateTime).ToString()}");
                     break;
             }
 
@@ -470,12 +447,12 @@ namespace gearvr_controller_tracker_pc
         {
             _lastTimeReceivedDataFromController = DateTime.Now;
             _connected = true;
-            //Console.WriteLine($"changed {DateTime.Now}");
+            //Log($"changed {DateTime.Now}");
             try {
                 ParseSensorData(args.CharacteristicValue);
             }
             catch (Exception ex) {
-                Console.WriteLine($"Exception while parsing controller sensor data: {ex.Message}");
+                Log($"Exception while parsing controller sensor data: {ex.Message}");
             }
             
         }

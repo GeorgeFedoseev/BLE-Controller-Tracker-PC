@@ -12,6 +12,8 @@ namespace gearvr_controller_tracker_pc
     [Serializable]
     public class Config
     {
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+
         public string oscReceiverIPAddress;
         public int oscReceiverPort;
         public List<ControllerConfig> controllersToTrack;
@@ -32,7 +34,7 @@ namespace gearvr_controller_tracker_pc
 
         public static Config LoadConfig()
         {
-            Console.WriteLine("Loading config...");
+            logger.Info("Loading config...");
 
             var configPath = Const.CONFIG_FILENAME;
 
@@ -41,11 +43,11 @@ namespace gearvr_controller_tracker_pc
                 jsonStr = File.ReadAllText(configPath);
             }
             catch (FileNotFoundException ex) {
-                Console.WriteLine($"Config not found at: {configPath}: {ex.Message}");
+                logger.Info($"Config not found at: {configPath}: {ex.Message}");
                 return null;
             }
             catch (Exception ex) {
-                Console.WriteLine($"Failed to read config file: {ex.Message}");
+                logger.Info($"Failed to read config file: {ex.Message}");
                 return null;
             }
 
@@ -58,7 +60,7 @@ namespace gearvr_controller_tracker_pc
                 _config = JsonConvert.DeserializeObject<Config>(jsonStr, jsonSettings);
             }
             catch (Exception ex) {
-                Console.WriteLine($"Failed to deserialize config file: {ex.Message} {ex.StackTrace}");
+                logger.Info($"Failed to deserialize config file: {ex.Message} {ex.StackTrace}");
             }
 
 

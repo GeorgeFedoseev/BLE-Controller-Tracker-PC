@@ -11,6 +11,9 @@ namespace gearvr_controller_tracker_pc
 {
     class ControllersTracker : IDisposable
     {
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+
+
         private static readonly float SEARCH_TIME_SECONDS = 3;
 
         private List<BaseController> _discoveredControllers;
@@ -22,20 +25,6 @@ namespace gearvr_controller_tracker_pc
             
             StartSearchingForControllers();
 
-            //// find controllers
-            //Console.WriteLine("Getting unpaired devices...");
-            //var foundAddresses = GearVRController.FindUnpairedControllersAddresses(Config.Main.controllersToTrack.Select(x => x.name).ToList());
-            //Console.WriteLine($"Found {foundAddresses.Count}/{Config.Main.controllersToTrack.Count}.");
-
-
-            //// connect to all found controllers
-            //foreach (var addr in foundAddresses) {
-            //    var c = new GearVRController(addr);
-            //    Console.WriteLine($"-> Connect Async to {addr}");
-            //    c.ConnectAsync();
-            //    _controllers.Add(c);
-            //}
-
             // start transmitter
             _transmitter = new OSCTransmitter();
             _transmitter.Start();
@@ -46,13 +35,13 @@ namespace gearvr_controller_tracker_pc
 
         void StartSearchingForControllers() {
             if (_controllersSearchingThread != null) {
-                Console.WriteLine($"Warning: Trying to start controllers searching thread. Already started before.");
+                logger.Info($"Warning: Trying to start controllers searching thread. Already started before.");
                 return;
             }
 
             _discoveredControllers = new List<BaseController>();
 
-            Console.WriteLine("Start searching for controllers...");
+            logger.Info("Start searching for controllers...");
 
             _controllersSearchingThread = new Thread(FindControllersWorker);
             _controllersSearchingThread.IsBackground = true;
@@ -67,11 +56,11 @@ namespace gearvr_controller_tracker_pc
 
                 if (_discoveredControllers.Any(c => c.BluetoothAddress == nameAddressTuple.Item2)) {
                     // we already know about this controller
-                    Console.WriteLine($"Found {deviceName} - Already added before");
+                    logger.Info($"Found {deviceName} - Already added before");
                     continue;
                 }
 
-                Console.WriteLine($"Found {deviceName} - NEW");
+                logger.Info($"Found {deviceName} - NEW");
 
                 if (deviceName.Contains("Gear VR Controller")) {
                     // create and add new gear vr controller
@@ -113,7 +102,7 @@ namespace gearvr_controller_tracker_pc
                     return;
                 }
 
-                Console.WriteLine("Found " + btAdv.Advertisement.LocalName);
+               // logger.Info("Found " + btAdv.Advertisement.LocalName);
 
                 result.Add(Tuple.Create(btAdv.Advertisement.LocalName, btAdv.BluetoothAddress));
             };

@@ -13,6 +13,9 @@ namespace gearvr_controller_tracker_pc
 {
     class Program
     {
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+
+
         [DllImport("Kernel32")]
         private static extern bool SetConsoleCtrlHandler(EventHandler handler, bool add);
 
@@ -42,7 +45,7 @@ namespace gearvr_controller_tracker_pc
                 Console.ReadKey(); return;
             }
             else {
-                Console.WriteLine("Config loaded.");
+                logger.Info("Config loaded.");
             }
 
 
@@ -59,13 +62,13 @@ namespace gearvr_controller_tracker_pc
 
         private static bool ConsoleExitHandler(CtrlType sig)
         {
-            Console.WriteLine("Exiting system due to external CTRL-C, or process kill, or shutdown");
+            logger.Info("Exiting system due to external CTRL-C, or process kill, or shutdown");
 
 
             //do your cleanup here
             _tracker.Dispose();
 
-            Console.WriteLine("Cleanup complete");
+            logger.Info("Cleanup complete");
             
 
             //shutdown right away so there are no lingering threads

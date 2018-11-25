@@ -96,9 +96,9 @@ namespace gearvr_controller_tracker_pc
             Console.WriteLine($"[{Name}][ERROR] {message}");
         }
 
-        protected void LogException(Exception ex)
+        protected void LogException(Exception ex, string message = null)
         {
-            Console.WriteLine($"[{Name}][EXCEPTION] {ex.Message}\n{ex.StackTrace}");
+            Console.WriteLine($"[{Name}][EXCEPTION] {message ?? ""} {ex.Message}\n{ex.StackTrace}");
         }
 
 
